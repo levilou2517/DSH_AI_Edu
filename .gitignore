@@ -1,10 +1,11 @@
 # Python 虚拟环境（按用户要求走文件夹内 venv，不提交）
 .venv/
 
-# SQLite 数据文件（模拟/运行时数据，提交种子与 schema 即可）
-data/*.db
-data/*.db-wal
-data/*.db-shm
+# SQLite 数据文件（模拟/运行时数据，提交 schema+种子脚本，不提交 .db 二进制）
+data/**/*.db
+data/**/*.db-wal
+data/**/*.db-shm
+data/**/*.log
 
 # Python 缓存 & 构建产物
 __pycache__/
