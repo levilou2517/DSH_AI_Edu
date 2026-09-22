@@ -1,0 +1,4 @@
+{
+  "preferences": [],
+  "schema": "主 Agent 在会话中检测到教师明确偏好时，用 write 追加到 preferences 数组。每次会话开始时读取此文件并遵守其中全部偏好。"
+}
