@@ -13,11 +13,11 @@
 
 | 项 | 值 |
 |---|---|
-| 仓库地址 | **`https://github.com/levilou2517/shiban-dist`**（待创建） |
+| 仓库地址 | **`https://github.com/levilou2517/shiban-dist`**（Public，随时可 clone） |
 | 仓库可见性 | Public（公开，任何人可 clone） |
 | 内容 | 预设、四技能、数据层脚本、本部署指南 |
 
-> 若本仓库尚不可见/未创建，请向师伴作者索取最新 `shiban-dist-*.tar.gz` 发布包（内容与仓库一致）。
+（仓库已公开就绪，直接 clone 或取 release 即可）
 
 **分发包目录结构**（clone 或解压后）：
 ```
