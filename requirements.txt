@@ -1,8 +1,0 @@
-# “师伴” Python 依赖（项目内专用 venv：.venv/）
-# 使用约定：.venv/bin/pip install -r requirements.txt
-#
-# 说明：
-#  - 班级画像库目前使用 Python 标准库 sqlite3，无需任何第三方依赖。
-#  - 仅当需要“支架类型×通过率”矩阵的模块化计算/可视化时才安装 pandas：
-#        .venv/bin/pip install pandas
-#    并把 pandas 加入下方 requirements（钉版本）。

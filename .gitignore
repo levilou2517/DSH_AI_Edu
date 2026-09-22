@@ -1,3 +1,7 @@
+# == 版本控制机制决策（见 构建/版本控制机制定稿.md）==
+# A 域仓库：入 git = 教材md/材料模板/构建文档/scripts/技能；不入 = venv/db/运行JSON/tar
+# B 域仓库（~/.dsh/.agent-presets/）独立管运行预设，不在此仓库。
+
 # Python 虚拟环境（按用户要求走文件夹内 venv，不提交）
 .venv/
 
@@ -6,6 +10,9 @@ data/**/*.db
 data/**/*.db-wal
 data/**/*.db-shm
 data/**/*.log
+
+# 分享/发布用临时 tar 包（决策3：不入库，为拆解副本）
+*.tar.gz
 
 # Python 缓存 & 构建产物
 __pycache__/

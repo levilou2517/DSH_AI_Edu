@@ -71,9 +71,11 @@ def print_matrix(rows: list) -> None:
 def main() -> int:
     ap = argparse.ArgumentParser()
     ap.add_argument("--force", action="store_true", help="已存在时清空并重新播种")
+    ap.add_argument("--db", default=None, help="数据库路径（默认 <包/脚本上级>/data/shiban/class_profile.db）")
     args = ap.parse_args()
 
-    conn = connect(DB_PATH)
+    db_path = args.db or DB_PATH
+    conn = connect(db_path)
     conn.execute("PRAGMA journal_mode=WAL;")
     conn.execute(SCHEMA)
     conn.commit()
@@ -90,7 +92,7 @@ def main() -> int:
             SEED,
         )
         conn.commit()
-        print(f"已播种 {len(SEED)} 条模拟记录 -> {DB_PATH}")
+        print(f"已播种 {len(SEED)} 条模拟记录 -> {db_path}")
     else:
         print(f"库已有 {existing} 条记录，跳过播种（--force 可重播）。")
 
