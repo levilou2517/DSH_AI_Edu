@@ -1,0 +1,9 @@
+#!/usr/bin/env bash
+# shiban-store — 师伴持久数据层启动器（零依赖，调用 store CLI）
+# 用法：bin/shiban-store <args...>（等价于 python services/shiban_cli.py <args...>）
+# 数据落在 ~/.shiban/data（跨会话/跨工作区继承，T2 已验证）。
+set -euo pipefail
+ROOT="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
+PY="${SHIBAN_PY:-$ROOT/.venv/bin/python}"
+export PYTHONPATH="$ROOT/services${PYTHONPATH:+:$PYTHONPATH}"
+exec "$PY" "$ROOT/services/shiban_cli.py" "$@"
