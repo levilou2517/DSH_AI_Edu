@@ -2,8 +2,20 @@
 # shiban-store — 师伴持久数据层启动器（零依赖，调用 store CLI）
 # 用法：bin/shiban-store <args...>（等价于 python services/shiban_cli.py <args...>）
 # 数据落在 ~/.shiban/data（跨会话/跨工作区继承，T2 已验证）。
+# Python 解析顺序：SHIBAN_PY 环境变量 > 项目 .venv/bin/python > 系统 python3。
 set -euo pipefail
 ROOT="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
-PY="${SHIBAN_PY:-$ROOT/.venv/bin/python}"
-export PYTHONPATH="$ROOT/services${PYTHONPATH:+:$PYTHONPATH}"
+
+if [ -n "${SHIBAN_PY:-}" ]; then
+  PY="$SHIBAN_PY"
+elif [ -x "$ROOT/.venv/bin/python" ]; then
+  PY="$ROOT/.venv/bin/python"
+else
+  PY="$(command -v python3 || echo python)"
+fi
+
+if [ -d "$ROOT/services" ]; then
+  export PYTHONPATH="$ROOT/services${PYTHONPATH:+:$PYTHONPATH}"
+fi
+
 exec "$PY" "$ROOT/services/shiban_cli.py" "$@"
