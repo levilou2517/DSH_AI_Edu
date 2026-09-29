@@ -11,6 +11,18 @@ data/**/*.db-wal
 data/**/*.db-shm
 data/**/*.log
 
+# == v0.4.0 数据分层：个人数据与 L0 原始材料不入库 ==
+# 已入库的历史运行 JSON（current_lesson/current_quiz/last_eval/lesson_plan_candidates）
+# 保留在版本控制中作 schema 参照，不删除；此处只排除此后新增的敏感层。
+# L0 原始材料：课堂记录/微格转写/教师笔记（含真实师生对话，不外发）
+data/shiban/raw/
+# 教师个人画像与偏好（个人数据）
+data/shiban/teacher_profile.json
+# 新增的 L1/L2 运行产物（微格评价、成长报告、归档索引、任务组织图）
+data/shiban/last_microeval.json
+data/shiban/teacher_growth_report.json
+data/shiban/*.index.json
+
 # 分享/发布用临时 tar 包（决策3：不入库，为拆解副本）
 *.tar.gz
 

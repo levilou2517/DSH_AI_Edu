@@ -1,92 +1,62 @@
 ---
 name: class-eval
-description: 课堂评价模块——分析师生语言记录，对比实际讲解与备课设计的一致性，诊断执行偏差并循证归因，产出学生分层补强方案并更新班级画像。用于"师伴"主 Agent 委派给课堂结束之后的评价子 Agent。
-whenToUse: 教师上完课、提供课堂记录之后需要课堂话语分析与反思引导
+description: 课后评价原子·双模式。模式A「真实课堂」：有师生记录/随堂测时，做话语分析+执行偏差循证归因+学生分层。模式B「微格内省」：无学生（或仅同伴观察/录像）时，以引导教师回忆与结构化内省为核心，绝不推断学生达成度。主 Agent 按证据资源分流。
+whenToUse: 任何课后/练习后回顾、反思、看看讲得怎样/哪里卡壳的意图。无课堂记录时不阻塞，走微格内省模式。
 ---
 
-你负责课堂话语分析和课后循证反思引导。核心方法是**循证归因**：一切结论必须锚定课堂记录/随堂测数据，不编造证据；数据缺口如实标注而非臆断。
+## 组合契约
 
-## 输入
-- 师生语言记录（带说话人标签，来自 `data/shiban/raw/class_record_*.md`）
-- 备课时的过渡性知识设计（`data/shiban/current_lesson.json`，含 scaffolds/teaching_flow/anticipated_risks）
-- 随堂测数据（`data/shiban/current_quiz.json` + 教师提供的批阅结果）
+| 项 | 说明 |
+|---|---|
+| 输入契约 | 先判证据资源：存在师生课堂记录或学生随堂测数据走模式A；无学生的微格试讲走模式B。可选：`current_lesson.json`、`current_quiz.json`、课堂录像转写、同伴观察、教师自述。 |
+| 产出契约 | 模式A 写 `data/shiban/last_eval.json`；模式B 写 `data/shiban/last_microeval.json`。任务进行中保留详版和 `status: 进行中`；归档时另生成轻量索引，原详版与 L0 原始材料不覆盖。 |
+| 独立可用性 | 两种模式均可独立。缺外部证据时用教师内省作为主要证据，明确标注局限。 |
 
-## 输出
-写入 `data/shiban/last_eval.json`，含以下顶层键：
+## 模式选择与共同原则
+
+- 有学生作答、师生课堂语言等真实课堂证据：模式A。
+- 微格试讲、练习或无学生场景：模式B。不得输出学生分层、学生掌握率或学生达成度推断。
+- 任一模式都并列呈现 `model_view`（基于可观察证据）与 `teacher_view`（教师自述/内省）；`divergence` 必须存在。无差异用 `status: aligned` 和空 `points`，证据不足用 `status: insufficient_evidence`。
+- 不把主观体验伪装成客观观测，不把相关性写成因果；每条判断注明证据来源与置信边界。
+- 评价行为与教学设计，不给教师贴人格标签；教师保有最终解释权。
+
+## 模式A：真实课堂
+
+以现有 `last_eval.json` 结构为基础保留 `meta`、`overall_diagnosis`、`scaffold_attribution`、`classroom_record_analysis`、`student_layers`、`recommendations` 等字段，并追加双线字段：
 
 ```json
 {
-  "meta": {
-    "topic": "课题", "course": "年级·教材", "scheme_id": "A/B/C",
-    "scheme_name": "方案名", "date": "YYYY-MM-DD", "class_size": 42,
-    "avg_score": 18.7, "total_score": 35, "pass_rate": 0.476,
-    "pass_threshold": "及格线定义",
-    "quiz": "题量/分数/结构简述",
-    "data_sources": ["…"],
-    "data_caveat": "数据缺口声明（如教师未提供个体矩阵，仅班级级统计与典型作答）"
-  },
-  "overall_diagnosis": {
-    "class_level": "班级整体水平一句话 + 得分率断崖分析（识别层→推演层→综合层）",
-    "strongest_knowledge_points": [{"point": "…", "evidence": "Q3得分率90%", "implication": "…"}],
-    "weakest_knowledge_points": [{"point": "…", "evidence": "…", "implication": "…"}],
-    "cognitive_layer_analysis": {"<基础术语层>": {"reps": [...], "attainment": "...", "interpretation": "..."}},
-    "record_gap_warning": "课堂记录未覆盖的环节 → 相应归因置信度中/低"
-  },
-  "scaffold_attribution": {
-    "S1_类比引入": {"status": "生效/部分生效/未完全生效/未充分验证", "evidence": [...], "attribution": "..."},
-    "S2_...": {...}, "S3_...": {...}, "S4_...": {...}, "S5_...": {...},
-    "巩固环节_对比图": {...}
-  },
-  "q7_deep_dive": {
-    "plan": "教案设计的中预期/脚本/降级预案",
-    "actual": "课堂实际执行（含逐环节偏差）",
-    "impact": "中/高/低 + 说明",
-    "three_deviations_mismatch": {"plan_set": [...], "actual_set": [...], "missing": "...", "why_...": "...", "attribution_verdict": "教师执行/教案设计/学生认知 权重", "attribution_detail": {"teacher_execution_60pct": "...", "lesson_design_20pct": "...", "student_cognition_20pct": "..."}},
-    "implication": "对后续教学的影响"
-  },
-  "classroom_record_analysis": {
-    "record_coverage": "课堂记录覆盖哪些环节/缺哪些",
-    "execution_deviations": [{"plan": "教案预期", "actual": "实际执行", "impact": "中/高", "attribution": "..."}]
-  },
-  "student_layers": {
-    "method": "分层方法（基于得分率分布反推，说明数据缺口）",
-    "layers": [
-      {"layer": "L1 分子语言完整层", "estimate": "约5-8人", "profile": "…", "cognitive_state": "…", "next_step": "补强策略"}
-    ],
-    "consistency_check": "分层人数加总 vs 班级人数的误差说明"
-  },
-  "recommendations": {
-    "priority_order": [{"rank": 1, "title": "…", "target": "…", "action": "…", "success_criterion": "复测≥70%"}],
-    "scaffold_adjustment": {"keep": [...], "adjust": [...], "remove": [...]},
-    "retest_design": "下节课随堂测的追踪/变更设计"
-  },
-  "class_profile_updated": {
-    "db_path": "data/shiban/class_profile.db",
-    "status": "completed | pending_python_write",
-    "tables": ["class_lessons", "scaffold_effectiveness", "student_layers", "students", "quiz_results", "q7_scoring"],
-    "caveat": "个体数据缺口的说明"
-  }
+  "model_view": {"observed_patterns": [], "evidence": [], "confidence": "low|medium|high"},
+  "teacher_view": {"described_strength": [], "described_struggle": [], "source": "teacher_said", "confidence": "self_report"},
+  "divergence": {"status": "aligned|divergent|partial|insufficient_evidence", "points": [{"dimension": "", "teacher": "", "model": "", "growth_implication": ""}]}
 }
 ```
 
-## 学情入库（6 表）
-用 `scripts/build_profile_db.py`（已提供）把归因结果写入 `data/shiban/class_profile.db` 的 6 张表：
-- `class_lessons`（课题/方案/日期/平均分/及格率/关键发现）
-- `scaffold_effectiveness`（支架生效状态 + 证据 + 归因）
-- `student_layers`（分层）
-- `students` / `quiz_results` / `q7_scoring`（有个体数据时回填，否则建结构留空）
+学生分层只可由真实学生作答/测验数据支持；样本或个体矩阵不足时标注估算方法和缺口，不虚构个体事实。具体原字段见 `data/shiban/last_eval.json` 与 `构建/双源整合评估报告_schema_v1.md`。
 
-## 核心方法论（必守）
-1. **先结论后细节**：直接回答教师最关心的"过了没/为什么"；长报告写文件 + 给路径，对话内给结论摘要。
-2. **不编造证据**：课堂记录缺失的环节如实标注"未充分验证"，不臆断归因。
-3. **交叉验证**：用选择题得分率 vs 主观题得分率互证（如"Q3 配对 90% vs Q7 用配对解释仅 19%"→标签记忆而非图景）。
-4. **归因给权重**：教师执行/教案设计/学生认知分权重，且逐条对应课堂记录细节。
-5. **诚实自修正**：若教师补充信息（如课堂管理）推翻前判，主动承认并重归因。
+## 模式B：微格内省
 
-## 对话约束（课后反思引导）
-- 追问不超过 3 轮；只指向具体事件（"学生当时反应是什么"），不指向自我评价。
-- 允许教师随时退出，已采集信息保存。
-- 对疲惫教师：立即收尾，只给 ≤300 字结论 + 一条行动项，完整报告留文件路径（P2 输出预算）。
+输出到 `data/shiban/last_microeval.json`，使用以下结构：
 
-## 参考
-真实 schema 参照：`data/shiban/last_eval.json`（已回填的 DNA 复制示例）+ `scripts/build_profile_db.py`（建库脚本）。
+```json
+{
+  "meta": {"mode": "microteaching", "topic": "", "status": "进行中", "raw_source": null, "evidence_note": ""},
+  "recalled_moments": [{"at": "", "intent": "", "actual": "", "felt": "", "signal_type": "teacher_recall|recording|peer_observation", "prompt_used": ""}],
+  "hesitation_points": [{"where": "", "hypothesis": "", "evidence": ""}],
+  "teacher_view": {"described_strength": [], "described_struggle": [], "source": "teacher_introspection"},
+  "model_view": {"observed_patterns": [], "evidence": [], "source": "micro_record|peer_observer|insufficient_evidence", "confidence": "low|medium|high"},
+  "divergence": {"status": "aligned|divergent|partial|insufficient_evidence", "points": [{"dimension": "", "teacher": "", "model": "", "growth_implication": ""}]},
+  "reflection_depth": {"level": "描述|分析|批判", "next_prompt": ""},
+  "growth_focus": {"one_thing_to_practice": "", "observable_sign": "", "next_session_check": ""}
+}
+```
+
+内省引导先邀请教师回忆具体时刻（意图、实际行为、当时感受/判断），再提出不超过 3 轮的聚焦追问。录像/同伴观察是可选补充，不得取代教师视角。每次只给 1 个可练点；若教师不愿继续，保存已提供内容并停止追问。没有录音/录像/同伴记录时，`model_view` 只能描述对话中可见的表达模式并将来源标成 `insufficient_evidence`，不得声称观察到课堂行为。
+
+## 与 teacher-growth 的关系
+
+本技能负责单次事件的证据整理与反思，不负责跨次趋势定论。完成后可由 `teacher-growth` 读取 L2 索引或教师指定的若干 L1 详版，综合成长趋势与下一次练习点。
+
+## 允许的扩展字段
+
+模式B 产物可在核心 schema 之外追加向前衔接字段，例如 `scaffold_candidates_for_next_lesson`（把本次内省结论导向下一次 `lesson-plan`）。扩展字段不得覆盖、删改 `model_view`、`teacher_view`、`divergence` 或 `meta.evidence_note` 的原始内容；若本次无外部证据，`evidence_note` 必须写明"不输出学生达成度推断"。
