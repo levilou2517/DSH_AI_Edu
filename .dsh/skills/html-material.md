@@ -21,7 +21,15 @@ bin/shiban-store asset add  --id <aid> --kind html --title <t> --file <html> \
     --kp <点> [--parent <宿主页>] [--assembly '<json>'] [--params '<界面schema json>']
 bin/shiban-store asset reuse --id <aid>
 ```
-宿主数据服务 Tool（若已挂载）等价，能力更原生：`shiban_asset_list` 等。
+宿主数据服务 Tool（若已挂载）等价且更原生，直接调用即可（与 CLI 共用同一 store）：
+```
+shiban_asset_list   按知识点/类型/学科查素材（先查后建第一步）
+shiban_asset_get    取素材详情（file_path / interface / assembly / reuse_count）
+shiban_asset_add    登记素材（自动查重；interface_schema 声明输入契约）
+shiban_asset_reuse  复用记账（reuse_count +1）
+shiban_asset_scan   扫现存产物统一索引（dry_run 预览）
+shiban_raw_list / shiban_raw_read / shiban_raw_save   原始证据（L0，只追加）
+```
 （`asset add` 会把源 HTML 拷入 `data/assets/<aid>/` 并登记；vendor 依赖放 `data/assets/vendor/`。）
 
 ## 素材层次（一表多用，无固定层级）
