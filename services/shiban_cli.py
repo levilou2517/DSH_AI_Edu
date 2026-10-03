@@ -13,6 +13,9 @@
         --integrated '概念识别达标'
   .venv/bin/python services/shiban_cli.py query --kp DNA复制 --scaffold 类比
   .venv/bin/python services/shiban_cli.py classes --teacher T_LIU
+  .venv/bin/python services/shiban_cli.py asset add --id a1 --kind report --title 示例 --file out.json --kp DNA复制
+  .venv/bin/python services/shiban_cli.py asset list [--kind report] [--kp ...] [--subject ...]
+  .venv/bin/python services/shiban_cli.py asset get --id a1 | asset reuse --id a1
 
 Agent 不直接碰文件；经此 CLI 或宿主服务访问 ~/.shiban/data。
 """
@@ -29,6 +32,15 @@ def _loads(s, default=None):
     except json.JSONDecodeError:
         sys.stderr.write(f"[warn] 参数非 JSON，按字符串处理: {s}\n")
         return s
+
+
+def _run(fn, *args, **kwargs):
+    """统一错误出口：非法输入打印到 stderr 并以 2 退出，不抛 traceback。"""
+    try:
+        return fn(*args, **kwargs)
+    except ValueError as e:
+        sys.stderr.write(f"[error] {e}\n")
+        sys.exit(2)
 
 
 def main():
@@ -62,6 +74,17 @@ def main():
 
     q = sub.add_parser("query"); q.add_argument("--scaffold"); q.add_argument("--kp"); q.add_argument("--level")
 
+    ast = sub.add_parser("asset"); ats = ast.add_subparsers(dest="sub", required=True)
+    aa = ats.add_parser("add")
+    aa.add_argument("--id", required=True); aa.add_argument("--kind", required=True)
+    aa.add_argument("--title", required=True); aa.add_argument("--file", required=True)
+    aa.add_argument("--subject"); aa.add_argument("--kp"); aa.add_argument("--lesson")
+    aa.add_argument("--tags"); aa.add_argument("--params")
+    al = ats.add_parser("list")
+    al.add_argument("--kind"); al.add_argument("--kp"); al.add_argument("--subject")
+    ag = ats.add_parser("get"); ag.add_argument("--id", required=True)
+    ar = ats.add_parser("reuse"); ar.add_argument("--id", required=True)
+
     a = ap.parse_args()
     out = None
     if a.cmd == "init":
@@ -84,6 +107,17 @@ def main():
                                 _loads(a.evidence), a.alignment, a.integrated)
     elif a.cmd == "query":
         out = S.query_reference(scaffold_type=a.scaffold, knowledge_point=a.kp, cognitive_level=a.level)
+    elif a.cmd == "asset":
+        if a.sub == "add":
+            out = _run(S.add_asset, a.id, a.kind, a.title, a.file, subject=a.subject,
+                       knowledge_point=a.kp, source_lesson=a.lesson,
+                       params=_loads(a.params), tags=a.tags)
+        elif a.sub == "list":
+            out = S.list_assets(kind=a.kind, knowledge_point=a.kp, subject=a.subject)
+        elif a.sub == "get":
+            out = S.get_asset(a.id)
+        elif a.sub == "reuse":
+            out = _run(S.reuse_asset, a.id)
     print(json.dumps(out, ensure_ascii=False, indent=2))
     return 0
 
