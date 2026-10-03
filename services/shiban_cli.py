@@ -84,6 +84,7 @@ def main():
     al.add_argument("--kind"); al.add_argument("--kp"); al.add_argument("--subject")
     ag = ats.add_parser("get"); ag.add_argument("--id", required=True)
     ar = ats.add_parser("reuse"); ar.add_argument("--id", required=True)
+    asc = ats.add_parser("scan"); asc.add_argument("--dry-run", action="store_true")
 
     rw = sub.add_parser("raw"); rws = rw.add_subparsers(dest="sub", required=True)
     rs = rws.add_parser("save"); rs.add_argument("--name", required=True)
@@ -126,6 +127,8 @@ def main():
             out = S.get_asset(a.id)
         elif a.sub == "reuse":
             out = _run(S.reuse_asset, a.id)
+        elif a.sub == "scan":
+            out = S.scan_existing(dry_run=a.dry_run)
     elif a.cmd == "raw":
         if a.sub == "save":
             text = a.text if a.text else open(a.file, encoding="utf-8").read()

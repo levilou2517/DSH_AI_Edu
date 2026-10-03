@@ -317,12 +317,13 @@ def save_raw_evidence(name, text):
     with open(path, "w", encoding="utf-8") as f:
         f.write(text)
     expected = len(text.encode("utf-8"))
-    if os.path.getsize(path) != expected:
+    actual = os.path.getsize(path) if os.path.exists(path) else -1
+    if actual != expected:
         try:
             os.remove(path)
         except OSError:
             pass
-        raise RuntimeError(f"写盘校验失败: {name} 期望 {expected}B 实际 {os.path.getsize(path)}B")
+        raise RuntimeError(f"写盘校验失败: {name} 期望 {expected}B 实际 {actual}B")
     return {"ok": True, "name": name, "path": path, "bytes": expected}
 
 
@@ -427,6 +428,86 @@ def reuse_asset(asset_id):
         m.commit()
         return {"ok": True, "asset_id": asset_id,
                 "file_path": os.path.join(ROOT, row["file_path"])}
+    finally:
+        m.close()
+
+
+# ---------- 现存产物治理（知识库整合 (a)：统一索引，不移动文件） ----------
+_SCAN_RULES = (
+    ("microeval_", "report"),
+    ("last_eval", "report"),
+    ("last_microeval", "report"),
+    ("课例", "report"),
+    ("report", "report"),
+    ("transcript", "transcript"),
+    ("note", "note"),
+)
+
+
+def _classify_existing(fname):
+    low = fname.lower()
+    for pat, kind in _SCAN_RULES:
+        if pat in low:
+            return kind
+    return None
+
+
+def scan_existing(dry_run=False):
+    """把 data/shiban/ 下现存运行产物登记入 assets 索引（知识库整合范围 (a)）。
+
+    只登记、不移动不复制（区别于 add_asset 的拷入语义）；已按 content_hash
+    入库或同 asset_id 存在者跳过。个人数据（teacher_profile）永不登记。
+    返回 {scanned, registered, skipped, items}。"""
+    if not os.path.isdir(SHIBAN_DATA):
+        return {"scanned": 0, "registered": 0, "skipped": 0, "items": []}
+    m = _connect(META_DB, META_SCHEMA)
+    items = []
+    scanned = registered = skipped = 0
+    try:
+        for fname in sorted(os.listdir(SHIBAN_DATA)):
+            fpath = os.path.join(SHIBAN_DATA, fname)
+            if not os.path.isfile(fpath):
+                continue
+            scanned += 1
+            if fname == "teacher_profile.json" or fname == ".gitkeep":
+                skipped += 1
+                continue
+            kind = _classify_existing(fname)
+            if kind is None:
+                skipped += 1
+                continue
+            aid = "scan-" + re.sub(r"[^\w\u4e00-\u9fff-]+", "-", fname.rsplit(".", 1)[0]).strip("-")
+            try:
+                _valid_name(aid)
+            except ValueError:
+                skipped += 1
+                continue
+            if m.execute("SELECT 1 FROM assets WHERE asset_id=?", (aid,)).fetchone():
+                skipped += 1
+                continue
+            with open(fpath, "rb") as f:
+                digest = hashlib.sha256(f.read()).hexdigest()
+            dup = m.execute("SELECT asset_id FROM assets WHERE content_hash=?", (digest,)).fetchone()
+            if dup:
+                items.append({"file": fname, "action": "skip-dup", "asset_id": dup["asset_id"]})
+                skipped += 1
+                continue
+            if dry_run:
+                items.append({"file": fname, "action": "dry-run", "kind": kind})
+                registered += 1
+                continue
+            now = _now()
+            m.execute(
+                "INSERT INTO assets(asset_id,kind,title,subject,knowledge_point,source_lesson,"
+                "params,tags,file_path,content_hash,reuse_count,created_at,updated_at)"
+                " VALUES(?,?,?,?,?,?,?,?,?,?,?,?,?)",
+                (aid, kind, fname, None, None, None, None, "scanned",
+                 os.path.relpath(fpath, ROOT), digest, 0, now, now),
+            )
+            m.commit()
+            items.append({"file": fname, "action": "registered", "asset_id": aid, "kind": kind})
+            registered += 1
+        return {"scanned": scanned, "registered": registered, "skipped": skipped, "items": items}
     finally:
         m.close()
 
