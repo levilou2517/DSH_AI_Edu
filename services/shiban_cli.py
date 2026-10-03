@@ -80,6 +80,9 @@ def main():
     aa.add_argument("--title", required=True); aa.add_argument("--file", required=True)
     aa.add_argument("--subject"); aa.add_argument("--kp"); aa.add_argument("--lesson")
     aa.add_argument("--tags"); aa.add_argument("--params")
+    # v0.4.3 层级编排：--parent 自引用上层宿主页；--assembly JSON 编排子组件+喂数据
+    aa.add_argument("--parent", dest="parent_asset")
+    aa.add_argument("--assembly")
     al = ats.add_parser("list")
     al.add_argument("--kind"); al.add_argument("--kp"); al.add_argument("--subject")
     ag = ats.add_parser("get"); ag.add_argument("--id", required=True)
@@ -120,7 +123,8 @@ def main():
         if a.sub == "add":
             out = _run(S.add_asset, a.id, a.kind, a.title, a.file, subject=a.subject,
                        knowledge_point=a.kp, source_lesson=a.lesson,
-                       params=_loads(a.params), tags=a.tags)
+                       params=_loads(a.params), tags=a.tags,
+                       parent_asset=a.parent_asset, assembly=_loads(a.assembly))
         elif a.sub == "list":
             out = S.list_assets(kind=a.kind, knowledge_point=a.kp, subject=a.subject)
         elif a.sub == "get":

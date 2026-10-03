@@ -91,6 +91,8 @@ CREATE TABLE IF NOT EXISTS assets (
   file_path       TEXT NOT NULL,      -- 相对 ROOT 的产物路径
   content_hash    TEXT,               -- SHA-256 → 查重/复用（先查后建）
   reuse_count     INTEGER DEFAULT 0,
+  parent_asset    TEXT,               -- v0.4.3 自引用：本素材作为更大页面的组件时，指向该页面 asset_id
+  assembly        TEXT,               -- v0.4.3 JSON：本页面编排了哪些子组件及每处喂的数据/关键参数
   created_at      TEXT,
   updated_at      TEXT
 );
@@ -121,7 +123,21 @@ def _connect(db_path, schema):
     conn.row_factory = sqlite3.Row
     conn.executescript(schema)
     conn.commit()
+    # v0.4.3 幂等迁移：老库 assets 表缺 parent_asset / assembly 列则补齐（零迁移、重复 init 安全）
+    if os.path.abspath(db_path) == os.path.abspath(META_DB):
+        _ensure_asset_columns(conn)
     return conn
+
+
+def _ensure_asset_columns(conn):
+    """为 v0.4.3 给老库 assets 表幂等补列；新库 DDL 已含，此处跳过。"""
+    has = {r[1] for r in conn.execute("PRAGMA table_info(assets)").fetchall()}
+    for col, ddl in (("parent_asset", "ALTER TABLE assets ADD COLUMN parent_asset TEXT"),
+                     ("assembly",    "ALTER TABLE assets ADD COLUMN assembly TEXT")):
+        if col not in has:
+            conn.execute(ddl)
+            conn.commit()
+            has.add(col)
 
 
 def _valid_name(component):
@@ -142,6 +158,7 @@ def init(force=False):
     os.makedirs(os.path.join(DATA_DIR, "classes"), exist_ok=True)
     os.makedirs(os.path.join(DATA_DIR, "observations"), exist_ok=True)
     os.makedirs(os.path.join(DATA_DIR, "assets"), exist_ok=True)
+    os.makedirs(os.path.join(DATA_DIR, "assets", "vendor"), exist_ok=True)
     os.makedirs(RAW_DIR, exist_ok=True)
     meta = _connect(META_DB, META_SCHEMA)
     ref = _connect(REF_DB, REF_SCHEMA)
@@ -353,16 +370,19 @@ ASSET_KINDS = ("html", "report", "transcript", "note")
 
 
 def add_asset(asset_id, kind, title, file_path, subject=None, knowledge_point=None,
-              source_lesson=None, params=None, tags=None):
+              source_lesson=None, params=None, tags=None, parent_asset=None, assembly=None):
     """登记素材。file_path 为绝对路径：拷入 assets/<id>/ 并登记。
 
     先查后建：若 file 内容 SHA-256 与既有 asset 相同 → 不重复入库，
-    返回 {ok, existed, asset_id}。"""
+    返回 {ok, existed, asset_id}。
+    v0.4.3：parent_asset（自引用上层宿主）/ assembly（本页编排子组件+喂数据）支持层级自由。"""
     _valid_name(asset_id)
     if kind not in ASSET_KINDS:
         raise ValueError(f"未知素材类型: {kind!r}（允许 {ASSET_KINDS}）")
     if not os.path.isfile(file_path):
         raise ValueError(f"源文件不存在: {file_path}")
+    if parent_asset is not None:
+        _valid_name(parent_asset)
     with open(file_path, "rb") as f:
         digest = hashlib.sha256(f.read()).hexdigest()
     m = _connect(META_DB, META_SCHEMA)
@@ -379,13 +399,14 @@ def add_asset(asset_id, kind, title, file_path, subject=None, knowledge_point=No
             raise RuntimeError(f"写盘校验失败：{dest} 为 0 字节（源文件非空）")
         now = _now()
         rel = os.path.relpath(dest, ROOT)
+        assembly_json = json.dumps(assembly, ensure_ascii=False) if assembly is not None else None
         m.execute(
             "INSERT INTO assets(asset_id,kind,title,subject,knowledge_point,source_lesson,"
-            "params,tags,file_path,content_hash,reuse_count,created_at,updated_at)"
-            " VALUES(?,?,?,?,?,?,?,?,?,?,?,?,?)",
+            "params,tags,file_path,content_hash,reuse_count,parent_asset,assembly,created_at,updated_at)"
+            " VALUES(?,?,?,?,?,?,?,?,?,?,?,?,?,?,?)",
             (asset_id, kind, title, subject, knowledge_point, source_lesson,
              json.dumps(params, ensure_ascii=False) if params is not None else None,
-             tags, rel, digest, 0, now, now),
+             tags, rel, digest, 0, parent_asset, assembly_json, now, now),
         )
         m.commit()
         return {"ok": True, "existed": False, "asset_id": asset_id, "content_hash": digest}
