@@ -15,7 +15,9 @@
 Agent 不直接碰文件，只经二者访问，达成「数据独立 + 跨会话继承」。
 """
 import argparse
+import base64
 import hashlib
+import html as html_lib
 import json
 import os
 import re
@@ -369,6 +371,97 @@ def read_raw(name):
 ASSET_KINDS = ("html", "report", "transcript", "note")
 
 
+def _absolute_asset_path(file_path):
+    """Resolve both current and legacy paths without escaping the data root."""
+    if os.path.isabs(file_path):
+        return os.path.normpath(file_path)
+    candidates = [os.path.join(ROOT, file_path), os.path.join(DATA_DIR, file_path)]
+    for candidate in candidates:
+        if os.path.exists(candidate):
+            return os.path.normpath(candidate)
+    return os.path.normpath(candidates[0])
+
+
+def _asset_result(row, **extra):
+    result = dict(row) if row is not None else {}
+    if row is not None:
+        result["absolute_file_path"] = _absolute_asset_path(row["file_path"])
+    result.update(extra)
+    return result
+
+
+def _assembly_to_json(assembly):
+    if assembly is None or assembly == {} or assembly == []:
+        return None
+    if isinstance(assembly, str):
+        if not assembly.strip() or assembly.strip() in ("{}", "[]", "null"):
+            return None
+        json.loads(assembly)
+        return assembly
+    return json.dumps(assembly, ensure_ascii=False)
+
+
+def _is_page_assembly(raw):
+    if not raw:
+        return False
+    try:
+        value = json.loads(raw)
+    except (TypeError, ValueError):
+        return False
+    return isinstance(value, (dict, list)) and bool(value)
+
+
+def _interface_of(row):
+    """Read the legacy field-map interface and standard object JSON Schema."""
+    path = os.path.join(os.path.dirname(_absolute_asset_path(row["file_path"])), "meta.json")
+    try:
+        with open(path, encoding="utf-8") as stream:
+            meta = json.load(stream)
+        params = meta.get("params") or {}
+        if isinstance(params, dict) and params.get("interface") is not None:
+            return params["interface"]
+    except (OSError, ValueError, TypeError):
+        pass
+    try:
+        params = json.loads(row["params"]) if row["params"] else {}
+    except (TypeError, ValueError):
+        params = {}
+    return params.get("interface", params) if isinstance(params, dict) else {}
+
+
+def _validate_data(interface, data, where):
+    data = {} if data is None else data
+    if not isinstance(data, dict):
+        return [f"{where} 必须是 object"]
+    # Legacy field map: {name: {type, required, enum}}. Standard schema uses properties.
+    schema = interface or {}
+    if isinstance(schema, dict) and isinstance(schema.get("properties"), dict):
+        fields = schema["properties"]
+        required = set(schema.get("required") or [])
+    elif isinstance(schema, dict):
+        fields = schema
+        required = {key for key, value in fields.items() if isinstance(value, dict) and value.get("required")}
+    else:
+        return []
+    errors = [f"{where}.{key} 缺少必填字段" for key in required if key not in data]
+    types = {"string": str, "number": (int, float), "integer": int, "boolean": bool,
+             "array": list, "object": dict, "null": type(None)}
+    for key, constraint in fields.items():
+        if key not in data or not isinstance(constraint, dict):
+            continue
+        value = data[key]
+        expected = constraint.get("type")
+        if expected in types:
+            actual_type = types[expected]
+            if expected == "number" and isinstance(value, bool):
+                errors.append(f"{where}.{key} 类型应为 number，实为 boolean")
+            elif not isinstance(value, actual_type):
+                errors.append(f"{where}.{key} 类型应为 {expected}，实为 {type(value).__name__}")
+        if "enum" in constraint and value not in constraint["enum"]:
+            errors.append(f"{where}.{key}={value!r} 不在允许值 {constraint['enum']}")
+    return errors
+
+
 def add_asset(asset_id, kind, title, file_path, subject=None, knowledge_point=None,
               source_lesson=None, params=None, tags=None, parent_asset=None, assembly=None):
     """登记素材。file_path 为绝对路径：拷入 assets/<id>/ 并登记。
@@ -387,9 +480,9 @@ def add_asset(asset_id, kind, title, file_path, subject=None, knowledge_point=No
         digest = hashlib.sha256(f.read()).hexdigest()
     m = _connect(META_DB, META_SCHEMA)
     try:
-        dup = m.execute("SELECT asset_id FROM assets WHERE content_hash=?", (digest,)).fetchone()
+        dup = m.execute("SELECT * FROM assets WHERE content_hash=?", (digest,)).fetchone()
         if dup:
-            return {"ok": True, "existed": True, "asset_id": dup["asset_id"], "content_hash": digest}
+            return _asset_result(dup, ok=True, existed=True, content_hash=digest)
         if m.execute("SELECT 1 FROM assets WHERE asset_id=?", (asset_id,)).fetchone():
             raise ValueError(f"素材 id 已存在: {asset_id}（复用请用 asset reuse，或换 id）")
         # 落盘到 assets/<asset_id>/main<ext>（固定主文件名，不随源文件名漂移）+ meta.json
@@ -408,7 +501,8 @@ def add_asset(asset_id, kind, title, file_path, subject=None, knowledge_point=No
                        "parent_asset": parent_asset, "assembly": assembly,
                        "created_at": now, "external": True}, mf, ensure_ascii=False, indent=2)
         rel = os.path.relpath(dest, ROOT)
-        assembly_json = json.dumps(assembly, ensure_ascii=False) if assembly is not None else None
+        # 空编排（None / {} / []）一律存 NULL：'{}' 是 SQL 真值，会让页面判据误收原子
+        assembly_json = _assembly_to_json(assembly)
         m.execute(
             "INSERT INTO assets(asset_id,kind,title,subject,knowledge_point,source_lesson,"
             "params,tags,file_path,content_hash,reuse_count,parent_asset,assembly,created_at,updated_at)"
@@ -427,7 +521,7 @@ def get_asset(asset_id):
     m = _connect(META_DB, META_SCHEMA)
     row = m.execute("SELECT * FROM assets WHERE asset_id=?", (asset_id,)).fetchone()
     m.close()
-    return dict(row) if row else None
+    return _asset_result(row) if row else None
 
 
 def list_assets(kind=None, knowledge_point=None, subject=None):
@@ -441,7 +535,7 @@ def list_assets(kind=None, knowledge_point=None, subject=None):
     if subject:
         sql += " AND subject=?"; args.append(subject)
     sql += " ORDER BY created_at DESC"
-    rows = [dict(r) for r in m.execute(sql, args).fetchall()]
+    rows = [_asset_result(r) for r in m.execute(sql, args).fetchall()]
     m.close()
     return rows
 
@@ -457,327 +551,12 @@ def reuse_asset(asset_id):
                   (_now(), asset_id))
         m.commit()
         return {"ok": True, "asset_id": asset_id,
-                "file_path": os.path.join(ROOT, row["file_path"])}
+                "file_path": row["file_path"],
+                "absolute_file_path": _absolute_asset_path(row["file_path"])}
     finally:
         m.close()
 
 
-# ---------- v0.4.3 素材编排：suggest（先查后建）+ compose（原子内联装配） ----------
-
-def _interface_of(row):
-    """取该原子的输入契约（interface schema 片段）——compose/suggest 单一来源。
-
-    优先级：素材目录 meta.json（运行期 add_asset/compose 写入，权威且脱离 DB 可读）
-    → DB params 兜底（scan 登记等无 meta.json 的行）。两处皆缺 → 视为无契约（不校验）。"""
-    try:
-        meta_p = os.path.join(os.path.dirname(os.path.join(ROOT, row["file_path"])), "meta.json")
-        if os.path.isfile(meta_p):
-            with open(meta_p, encoding="utf-8") as f:
-                meta = json.load(f)
-            iface = (meta.get("params") or {}).get("interface")
-            if isinstance(iface, dict) and iface:
-                return iface
-    except (OSError, ValueError):
-        pass
-    try:
-        p = json.loads(row["params"]) if row["params"] else {}
-    except (TypeError, ValueError):
-        p = {}
-    return (p or {}).get("interface") or {}
-
-
-def _validate_data(iface, data, where):
-    """按 interface 校验喂数——仅 required/enum/type 三子集（零依赖，非完整 JSON Schema）。
-
-    interface 约定为「字段名 -> {约束}」映射；无约束的字段（interface 中值为空对象）不校验。
-    缺省值由原子内部兜底，compose 不代填。"""
-    data = data or {}
-    errs = []
-    tmap = {"string": str, "number": (int, float), "integer": int,
-            "boolean": bool, "array": list, "object": dict}
-    for field, cons in (iface or {}).items():
-        if not isinstance(cons, dict):
-            cons = {}
-        if cons.get("required") and field not in data:
-            errs.append(f"{where}.{field} 缺少必填字段")
-            continue
-        if field not in data:
-            continue
-        v = data[field]
-        t = cons.get("type")
-        if t and t in tmap and not isinstance(v, tmap[t]):
-            errs.append(f"{where}.{field} 类型应为 {t}，实为 {type(v).__name__}")
-            continue
-        if "enum" in cons and v not in cons["enum"]:
-            errs.append(f"{where}.{field}={v!r} 不在允许值 {cons['enum']}")
-    return errs
-
-
-def suggest_assets(knowledge_point=None, kind=None, subject=None):
-    """先查后建第一步（只读、无副作用，不递增 reuse_count）。
-
-    返回库存清单（每个 html 原子附 interface 输入契约，供 compose 喂数）+ 建议编排方式。
-    不预设固定主题/原子清单：库存有什么就建议什么，缺口如实声明。"""
-    rows = list_assets(kind=kind, knowledge_point=knowledge_point, subject=subject)
-    atoms, pages = [], []
-    for r in rows:
-        entry = {
-            "asset_id": r["asset_id"], "kind": r["kind"], "title": r["title"],
-            "subject": r["subject"], "knowledge_point": r["knowledge_point"],
-            "reuse_count": r["reuse_count"],
-            "file_path": os.path.normpath(os.path.join(ROOT, r["file_path"])),
-        }
-        if r["kind"] == "html":
-            entry["interface"] = _interface_of(r)
-        if r.get("assembly"):
-            try:
-                entry["assembly"] = json.loads(r["assembly"])
-            except (TypeError, ValueError):
-                pass
-            pages.append(entry)
-        else:
-            atoms.append(entry)
-    hints = []
-    if atoms:
-        hints.append("先向教师确认预期交互/效果（ask_user），再用 shiban_asset_compose 编排；"
-                     "html 原子按 interface 声明喂数，缺省值由原子内部兜底。")
-    if not atoms and not pages:
-        hints.append("库存无匹配素材：新建原子（生成 HTML 后经 shiban_asset_add 入库，"
-                     "kind=html 时用 interface_schema 声明输入契约）。")
-    return {
-        "knowledge_point": knowledge_point, "kind": kind, "subject": subject,
-        "atoms": atoms, "pages": pages,
-        "counts": {"atoms": len(atoms), "pages": len(pages)},
-        "suggestions": hints,
-    }
-
-
-_SECTION_TPL = {
-    "type": "object",
-    "properties": {
-        "asset": {"type": "string", "description": "库存原子 asset_id"},
-        "label": {"type": "string", "description": "本节标题（编排页呈现）"},
-        "data": {"type": "object", "description": "按该原子 interface 契约喂的数据"},
-    },
-    "required": ["asset"],
-    "additionalProperties": False,
-}
-
-
-def compose_spec_schema():
-    """compose 输入契约（单一真源：CLI --spec-schema 与 bundle 工具参数都由它派生）。"""
-    return {
-        "type": "object",
-        "properties": {
-            "page_id": {"type": "string", "description": "编排页面 asset_id"},
-            "title": {"type": "string", "description": "页面标题"},
-            "subject": {"type": "string"},
-            "knowledge_point": {"type": "string"},
-            "tags": {"type": "string", "description": "逗号分隔"},
-            "layout": {
-                "type": "object",
-                "properties": {
-                    "mode": {"type": "string", "enum": ["stack", "grid"],
-                             "description": "stack=自上而下；grid=自适应网格并排"},
-                    "gap": {"type": "number", "description": "节间距 px，默认 20"},
-                },
-                "additionalProperties": False,
-            },
-            "sections": {"type": "array", "items": _SECTION_TPL, "minItems": 1},
-        },
-        "required": ["page_id", "title", "sections"],
-        "additionalProperties": False,
-    }
-
-
-def _compose_section(i, sec, atom):
-    """把单个原子 main.html 内联为一个自包含节（作用域隔离 + 喂数注入）。
-
-    隔离规则：style→<scope 前缀；script→IIFE + 实例 id 替换 + 裸选择器加 #scope 前缀；
-    body→限定进 <section id>。零外链、零 iframe，产物仍是自包含单文件。"""
-    html_path = os.path.join(ROOT, atom["file_path"])
-    if not os.path.isfile(html_path):
-        raise ValueError(f"原子主文件缺失: {atom['asset_id']} -> {html_path}")
-    with open(html_path, encoding="utf-8") as f:
-        html = f.read()
-
-    scope = f"shiban-sec-{i}"
-    m_body = re.search(r"<body[^>]*>(.*)</body>", html, re.S | re.I)
-    body = m_body.group(1) if m_body else html
-    # 样式/脚本可能位于 <head> 或 <body>：一律从**整份文档**提取，body 中相应标签稍后移除
-    style_src = "\n".join(re.findall(r"<style[^>]*>(.*?)</style>", html, re.S | re.I))
-    scripts = re.findall(r"<script(?![^>]*\bsrc=)[^>]*>(.*?)</script>", html, re.S | re.I)
-    frag = re.sub(r"<style[^>]*>.*?</style>", "", body, flags=re.S | re.I)
-    frag = re.sub(r"<script(?![^>]*\bsrc=)[^>]*>.*?</script>", "", frag, flags=re.S | re.I)
-    frag = re.sub(r"<script[^>]*\bsrc=[^>]*></script>", "", frag, flags=re.I)  # 禁运行时外链
-
-    # 1) 样式作用域化：所有选择器前置 #scope（原子间类名互不污染）
-    style = re.sub(r"(?m)^(?!@)([^{}@/]+)\{",
-                   lambda mm: "".join(f"#{scope} {s.strip()}," if s.strip() else ""
-                                      for s in mm.group(1).split(",")) + " {",
-                   style_src)
-    # CSS 自定义属性兜底：原子的 :root 变量被改写后不会命中本节，需在本节根重新声明
-    vars_map = dict(re.findall(r"(--[\w-]+)\s*:\s*([^;}]+)", style_src))
-    if vars_map:
-        style = ("#%s{%s}" % (scope, ";".join(f"{k}:{v.strip()}" for k, v in vars_map.items()))
-                 + "\n" + style)
-    # 2) 脚本隔离：IIFE + 实例 id 改名（同原子多次复用时 DOM id 不冲突）
-    js = "\n".join(scripts)
-    if js.strip():
-        ids = sorted(set(re.findall(r"""getElementById\(['"]([^'"]+)['"]\)""", js)))
-        for _id in ids:
-            frag = frag.replace(f'id="{_id}"', f'id="{scope}-{_id}"')
-            frag = frag.replace(f"id=\"{_id}\"", f"id=\"{scope}-{_id}\"")
-            js = re.sub(r"""(['"])%s\1""" % re.escape(_id), f"'{scope}-{_id}'", js)
-        js = ("(function(){\nvar __S=%s;\nfunction __q(s){"
-              "return typeof s==='string'&&/^[.#>]/.test(s)?__S.querySelectorAll(s):s;}\n"
-              "try{\n%s\n}catch(e){console.error('[shiban-atom %s]',e);}\n})();"
-              % (json.dumps("#" + scope), js, atom["asset_id"]))
-    # 3) 喂数注入：window.__MATERIAL_DATA 在该节脚本之前生效（原子按既有约定读取）
-    data_json = json.dumps(sec.get("data") or {}, ensure_ascii=False, separators=(",", ":"))
-    label = sec.get("label") or atom["title"]
-    return (
-        f'<section id="{scope}" class="shiban-sec" data-asset="{atom["asset_id"]}">\n'
-        f'<style>\n{style}\n</style>\n'
-        f'<div class="shiban-sec-label">{label}</div>\n'
-        f'<div class="shiban-sec-body">{frag}</div>\n'
-        f'<script>window.__MATERIAL_DATA=json.loads({json.dumps(data_json)});</script>\n'
-        f'<script>{js}</script>\n'
-        f'</section>'
-    ), atom["asset_id"]
-
-
-def compose_asset(spec):
-    """v0.4.3 编排：按 interface 契约校验喂数 → 内联装配原子 → 自包含页面落盘入库。
-
-    产物 data/assets/<page_id>/main.html（路径契约固定主文件名）。
-    编排即复用：各引用原子 reuse_count+1；原子 parent_asset 指回本页（层级自由降级）；
-    页面 assembly 记引用子组件与每处喂数。
-    与 add_asset 共用查重/写盘校验（content_hash 去重、0 字节即报错）。
-
-    vendor 边界：compose 产物**零外链零 iframe**；vendor 内化库的引用发生在**原子侧**
-    （原子生成时若需外库，把库内容内联进自身 main.html，而非 compose 期拼 <script src>）。"""
-    if not isinstance(spec, dict):
-        raise ValueError("spec 必须是 JSON 对象")
-    for k in ("page_id", "title", "sections"):
-        if not spec.get(k):
-            raise ValueError(f"spec 缺少必填字段: {k}")
-    page_id = spec["page_id"]
-    _valid_name(page_id)
-    sections = spec["sections"]
-    if not isinstance(sections, list) or not sections:
-        raise ValueError("spec.sections 必须是非空数组")
-
-    m = _connect(META_DB, META_SCHEMA)
-    try:
-        # id 已存在时延迟报错：若组装产物与既有素材 content_hash 相同仍走 existed 查重返回（幂等）
-        if m.execute("SELECT 1 FROM assets WHERE asset_id=?", (page_id,)).fetchone():
-            dup_by_id = True
-        else:
-            dup_by_id = False
-        parts, used, assembly_secs = [], [], []
-        for i, sec in enumerate(sections, 1):
-            if not isinstance(sec, dict) or not sec.get("asset"):
-                raise ValueError(f"sections[{i}] 缺少 asset 字段")
-            row = m.execute("SELECT * FROM assets WHERE asset_id=?", (sec["asset"],)).fetchone()
-            if not row:
-                raise ValueError(f"原子不存在: {sec['asset']}（先 shiban_asset_add 入库）")
-            if row["kind"] != "html":
-                raise ValueError(f"sections[{i}] {sec['asset']} kind={row['kind']}，编排仅支持 html 原子")
-            errs = _validate_data(_interface_of(row), sec.get("data"), f"sections[{i}]({sec['asset']})")
-            if errs:
-                raise ValueError("；".join(errs))
-            frag, aid = _compose_section(i, sec, dict(row))
-            parts.append(frag)
-            used.append(aid)
-            assembly_secs.append({"asset": aid, "label": sec.get("label"),
-                                  "data": sec.get("data") or {}})
-
-        layout = spec.get("layout") or {}
-        mode = layout.get("mode", "stack")
-        gap = layout.get("gap", 20)
-        grid = "display:grid;grid-template-columns:repeat(auto-fit,minmax(360px,1fr));" \
-            if mode == "grid" else "display:block;"
-        page = f"""<!DOCTYPE html>
-<html lang="zh-CN">
-<head>
-<meta charset="UTF-8">
-<meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>{spec["title"]}</title>
-<style>
-  body{{margin:0;background:#f8fafc;font-family:"PingFang SC","Microsoft YaHei",system-ui,sans-serif;color:#1f2937;}}
-  .shiban-page{{max-width:1200px;margin:0 auto;padding:20px;}}
-  .shiban-page-title{{font-size:20px;font-weight:700;margin:0 0 16px;}}
-  .shiban-segments{{display:flex;flex-direction:column;gap:{gap}px;{grid}}}
-  .shiban-sec{{background:#fff;}}
-  .shiban-sec-label{{font-size:14px;font-weight:600;color:#0d9488;padding:10px 16px 0;}}
-</style>
-</head>
-<body>
-<div class="shiban-page">
-<div class="shiban-page-title">{spec["title"]}</div>
-<div class="shiban-segments">
-{chr(10).join(parts)}
-</div>
-</div>
-</body>
-</html>
-"""
-        # 临时文件 → content_hash 查重（与 add_asset 同一去重通路）
-        tmp = os.path.join(DATA_DIR, "assets", f".compose-{page_id}.tmp.html")
-        os.makedirs(os.path.dirname(tmp), exist_ok=True)
-        with open(tmp, "w", encoding="utf-8") as f:
-            f.write(page)
-        try:
-            with open(tmp, "rb") as f:
-                digest = hashlib.sha256(f.read()).hexdigest()
-            dup = m.execute("SELECT asset_id FROM assets WHERE content_hash=?", (digest,)).fetchone()
-            if dup:
-                return {"ok": True, "existed": True, "asset_id": dup["asset_id"],
-                        "content_hash": digest}
-            if dup_by_id:
-                raise ValueError(f"素材 id 已存在: {page_id}（编排页请换 id，或先复用既有原子）")
-            dest_dir = os.path.join(DATA_DIR, "assets", page_id)
-            os.makedirs(dest_dir, exist_ok=True)
-            dest = os.path.join(dest_dir, "main.html")  # 路径契约：固定主文件名 main.html
-            shutil.move(tmp, dest)
-            if os.path.getsize(dest) == 0:
-                raise RuntimeError(f"写盘校验失败：{dest} 为 0 字节")
-            now = _now()
-            assembly = {"sections": assembly_secs, "layout": {"mode": mode, "gap": gap}}
-            assembly_json = json.dumps(assembly, ensure_ascii=False)
-            with open(os.path.join(dest_dir, "meta.json"), "w", encoding="utf-8") as mf:
-                json.dump({"asset_id": page_id, "kind": "html", "title": spec["title"],
-                           "subject": spec.get("subject"), "knowledge_point": spec.get("knowledge_point"),
-                           "tags": spec.get("tags"), "parent_asset": None, "assembly": assembly,
-                           "file": "main.html", "external": True, "created_at": now},
-                          mf, ensure_ascii=False, indent=2)
-            rel = os.path.relpath(dest, ROOT)
-            m.execute(
-                "INSERT INTO assets(asset_id,kind,title,subject,knowledge_point,source_lesson,"
-                "params,tags,file_path,content_hash,reuse_count,parent_asset,assembly,created_at,updated_at)"
-                " VALUES(?,?,?,?,?,?,?,?,?,?,?,?,?,?,?)",
-                (page_id, "html", spec["title"], spec.get("subject"), spec.get("knowledge_point"),
-                 spec.get("source_lesson"), None, spec.get("tags"), rel, digest, 0,
-                 None, assembly_json, now, now))
-            # 编排即复用：引用原子计数 +1；parent_asset 为空时指回本页（已有父层不覆盖——层级自由而非单亲）
-            for aid in used:
-                m.execute("UPDATE assets SET reuse_count=reuse_count+1,updated_at=? WHERE asset_id=?",
-                          (now, aid))
-                m.execute("UPDATE assets SET parent_asset=? WHERE asset_id=? AND parent_asset IS NULL",
-                          (page_id, aid))
-            m.commit()
-            return {"ok": True, "existed": False, "asset_id": page_id,
-                    "file_path": rel, "content_hash": digest,
-                    "sections": len(sections), "atoms": sorted(set(used))}
-        finally:
-            if os.path.exists(tmp):
-                try:
-                    os.remove(tmp)
-                except OSError:
-                    pass
-    finally:
-        m.close()
 
 
 # ---------- 现存产物治理（知识库整合 (a)：统一索引，不移动文件） ----------
@@ -877,6 +656,182 @@ def query_reference(scaffold_type=None, knowledge_point=None, cognitive_level=No
     rows = ref.execute(sql + " ORDER BY avg_pass_rate DESC", args).fetchall()
     ref.close()
     return [dict(r) for r in rows]
+
+
+# ---------- v0.4.3 material engine (iframe/srcdoc isolation) ----------
+def _material_read(row):
+    path = _absolute_asset_path(row["file_path"])
+    if not os.path.isfile(path):
+        raise ValueError(f"素材主文件缺失: {row['asset_id']} -> {path}")
+    with open(path, encoding="utf-8") as stream:
+        return stream.read()
+
+
+def _material_with_data(document, data):
+    payload = json.dumps(data or {}, ensure_ascii=False, separators=(",", ":"), allow_nan=False)
+    payload = payload.replace("<", "\\u003c").replace("\u2028", "\\u2028").replace("\u2029", "\\u2029")
+    injection = f"<script>window.__MATERIAL_DATA={payload};</script>"
+    # Inject before any original script, including scripts inside head.
+    head = re.search(r"<head\b[^>]*>", document, re.I)
+    if head:
+        return document[:head.end()] + injection + document[head.end():]
+    opening = re.search(r"<html\b[^>]*>", document, re.I)
+    if opening:
+        return document[:opening.end()] + "<head>" + injection + "</head>" + document[opening.end():]
+    return injection + document
+
+
+def _material_section(index, section, row):
+    document = _material_with_data(_material_read(row), section.get("data") or {})
+    srcdoc = html_lib.escape(document, quote=True)
+    label = html_lib.escape(str(section.get("label") or row["title"]), quote=True)
+    asset_id = html_lib.escape(str(row["asset_id"]), quote=True)
+    return (f'<section class="shiban-sec" data-asset="{asset_id}">'
+            f'<div class="shiban-sec-label">{label}</div>'
+            f'<iframe title="{label}" sandbox="allow-scripts" '
+            f'srcdoc="{srcdoc}" class="shiban-sec-frame"></iframe></section>')
+
+
+def compose_spec_schema():
+    return {
+        "type": "object",
+        "properties": {
+            "page_id": {"type": "string"}, "title": {"type": "string"},
+            "subject": {"type": "string"}, "knowledge_point": {"type": "string"},
+            "source_lesson": {"type": "string"}, "tags": {"type": "string"},
+            "layout": {"type": "object", "properties": {
+                "mode": {"type": "string", "enum": ["stack", "grid"]},
+                "gap": {"type": "number", "minimum": 0, "maximum": 200}},
+                "additionalProperties": False},
+            "sections": {"type": "array", "minItems": 1, "items": {
+                "type": "object", "properties": {
+                    "asset": {"type": "string"}, "label": {"type": "string"},
+                    "data": {"type": "object"}}, "required": ["asset"],
+                "additionalProperties": False}},
+        }, "required": ["page_id", "title", "sections"], "additionalProperties": False,
+    }
+
+
+def compose_asset(spec):
+    if not isinstance(spec, dict):
+        raise ValueError("spec 必须是 JSON 对象")
+    for key in ("page_id", "title", "sections"):
+        if not spec.get(key):
+            raise ValueError(f"spec 缺少必填字段: {key}")
+    _valid_name(spec["page_id"])
+    sections = spec["sections"]
+    if not isinstance(sections, list) or not sections:
+        raise ValueError("spec.sections 必须是非空数组")
+    layout = spec.get("layout") or {}
+    if not isinstance(layout, dict):
+        raise ValueError("spec.layout 必须是 object")
+    mode = layout.get("mode", "stack")
+    gap = layout.get("gap", 20)
+    if mode not in ("stack", "grid") or isinstance(gap, bool) or not isinstance(gap, (int, float)) or not 0 <= gap <= 200:
+        raise ValueError("layout.mode 必须为 stack/grid，gap 必须为 0..200 的 number")
+    m = _connect(META_DB, META_SCHEMA)
+    temp = None
+    dest_dir = None
+    created_dir = False
+    try:
+        existing_id = m.execute("SELECT * FROM assets WHERE asset_id=?", (spec["page_id"],)).fetchone()
+        parts, used, records = [], [], []
+        for index, section in enumerate(sections, 1):
+            if not isinstance(section, dict) or not section.get("asset"):
+                raise ValueError(f"sections[{index}] 缺少 asset 字段")
+            row = m.execute("SELECT * FROM assets WHERE asset_id=?", (section["asset"],)).fetchone()
+            if not row or row["kind"] != "html":
+                raise ValueError(f"sections[{index}] 原子不存在或不是 html: {section.get('asset')}")
+            data = section.get("data") or {}
+            errors = _validate_data(_interface_of(row), data, f"sections[{index}]({row['asset_id']})")
+            if errors:
+                raise ValueError("；".join(errors))
+            parts.append(_material_section(index, section, row))
+            used.append(row["asset_id"])
+            records.append({"asset": row["asset_id"], "label": section.get("label"), "data": data})
+        title = html_lib.escape(str(spec["title"]), quote=True)
+        display = "display:grid;grid-template-columns:repeat(auto-fit,minmax(360px,1fr));" if mode == "grid" else "display:flex;flex-direction:column;"
+        page = ('<!doctype html><html lang="zh-CN"><head><meta charset="UTF-8">'
+                '<meta name="viewport" content="width=device-width,initial-scale=1">'
+                f"<title>{title}</title><style>body{{margin:0;background:#f8fafc;"
+                "font-family:system-ui,sans-serif;color:#1f2937}}.shiban-page{max-width:1200px;"
+                "margin:0 auto;padding:20px}.shiban-page-title{font-size:20px;font-weight:700;"
+                f"margin:0 0 16px}}.shiban-segments{{{display}gap:{gap}px}}"
+                ".shiban-sec{background:#fff}.shiban-sec-label{font-size:14px;font-weight:600;"
+                "color:#0d9488;padding:10px 16px 0}.shiban-sec-frame{display:block;width:100%;"
+                'min-height:120px;border:0}</style></head><body><main class="shiban-page">'
+                f'<div class="shiban-page-title">{title}</div><div class="shiban-segments">'
+                + "".join(parts) + '</div></main></body></html>')
+        digest = hashlib.sha256(page.encode("utf-8")).hexdigest()
+        dup = m.execute("SELECT * FROM assets WHERE content_hash=?", (digest,)).fetchone()
+        if dup:
+            return _asset_result(dup, ok=True, existed=True, content_hash=digest)
+        aid = spec["page_id"]
+        if existing_id is not None:
+            raise ValueError(f"素材 id 已存在: {aid}（内容不同，请换 id）")
+        dest_dir = os.path.join(DATA_DIR, "assets", aid)
+        os.makedirs(dest_dir, exist_ok=False)
+        dest = os.path.join(dest_dir, "main.html")
+        temp = dest + ".tmp"
+        with open(temp, "w", encoding="utf-8") as stream:
+            stream.write(page)
+            stream.flush(); os.fsync(stream.fileno())
+        os.replace(temp, dest)
+        assembly = {"sections": records, "layout": {"mode": mode, "gap": gap}}
+        now = _now(); rel = os.path.relpath(dest, ROOT)
+        meta_path = os.path.join(dest_dir, "meta.json")
+        with open(meta_path + ".tmp", "w", encoding="utf-8") as stream:
+            json.dump({"asset_id": aid, "kind": "html", "title": spec["title"],
+                       "subject": spec.get("subject"), "knowledge_point": spec.get("knowledge_point"),
+                       "params": None, "tags": spec.get("tags"), "assembly": assembly,
+                       "file": "main.html", "external": True, "created_at": now}, stream, ensure_ascii=False, indent=2)
+            stream.flush(); os.fsync(stream.fileno())
+        os.replace(meta_path + ".tmp", meta_path)
+        m.execute("BEGIN")
+        m.execute("INSERT INTO assets(asset_id,kind,title,subject,knowledge_point,source_lesson,params,tags,file_path,content_hash,reuse_count,parent_asset,assembly,created_at,updated_at) VALUES(?,?,?,?,?,?,?,?,?,?,?,?,?,?,?)",
+                  (aid, "html", spec["title"], spec.get("subject"), spec.get("knowledge_point"), spec.get("source_lesson"), None, spec.get("tags"), rel, digest, 0, None, json.dumps(assembly, ensure_ascii=False), now, now))
+        for used_id in used:
+            m.execute("UPDATE assets SET reuse_count=reuse_count+1,updated_at=? WHERE asset_id=?", (now, used_id))
+            m.execute("UPDATE assets SET parent_asset=? WHERE asset_id=? AND parent_asset IS NULL", (aid, used_id))
+        m.commit()
+        row = m.execute("SELECT * FROM assets WHERE asset_id=?", (aid,)).fetchone()
+        return _asset_result(row, ok=True, existed=False, sections=len(sections), atoms=sorted(set(used)))
+    except Exception:
+        if m.in_transaction:
+            m.rollback()
+        if temp:
+            for path in (temp, temp[:-4] if temp.endswith(".tmp") else temp):
+                try:
+                    if os.path.isfile(path): os.remove(path)
+                except OSError: pass
+        if dest_dir and os.path.isdir(dest_dir) and not os.listdir(dest_dir):
+            try:
+                os.rmdir(dest_dir)
+            except OSError:
+                pass
+        raise
+    finally:
+        m.close()
+
+
+def suggest_assets(knowledge_point=None, kind=None, subject=None, knowledge_point_mode="contains"):
+    if knowledge_point_mode not in ("exact", "contains"):
+        raise ValueError("未知 knowledge_point_mode: %r" % knowledge_point_mode)
+    rows = list_assets(kind=kind, knowledge_point=knowledge_point, subject=subject) if not knowledge_point or knowledge_point_mode == "exact" else list_assets(kind=kind, subject=subject)
+    if knowledge_point and knowledge_point_mode == "contains":
+        needle = knowledge_point.casefold()
+        rows = [row for row in rows if needle in (row.get("knowledge_point") or "").casefold()]
+    atoms, pages = [], []
+    for row in rows:
+        entry = {"asset_id": row["asset_id"], "kind": row["kind"], "title": row["title"], "subject": row["subject"], "knowledge_point": row["knowledge_point"], "reuse_count": row["reuse_count"], "file_path": row["file_path"], "absolute_file_path": row["absolute_file_path"]}
+        if row["kind"] == "html": entry["interface"] = _interface_of(row)
+        if _is_page_assembly(row.get("assembly")):
+            try: entry["assembly"] = json.loads(row["assembly"])
+            except (TypeError, ValueError): pass
+            pages.append(entry)
+        else: atoms.append(entry)
+    hints = ["先确认预期交互/布局，再用 compose 编排。"] if atoms else ["库存无匹配素材，可先创建 html 原子。"]
+    return {"knowledge_point": knowledge_point, "kind": kind, "subject": subject, "knowledge_point_mode": knowledge_point_mode, "atoms": atoms, "pages": pages, "counts": {"atoms": len(atoms), "pages": len(pages)}, "suggestions": hints}
 
 
 # ---------- 幂等删除（显式 force）----------

@@ -25,25 +25,47 @@ Agent 不直接碰文件；经此 CLI 或宿主服务访问 ~/.shiban/data。
 import argparse
 import json
 import sys
+from pathlib import Path
 
 import shiban_store as S
 
 
 def _loads(s, default=None):
+    """Parse optional JSON values; malformed JSON is a user input error."""
+    if not s:
+        return {} if default is None else default
     try:
-        return json.loads(s) if s else (default or {})
-    except json.JSONDecodeError:
-        sys.stderr.write(f"[warn] 参数非 JSON，按字符串处理: {s}\n")
-        return s
+        return json.loads(s)
+    except json.JSONDecodeError as e:
+        raise ValueError(f"参数不是合法 JSON: {e.msg} (第 {e.lineno} 行)") from e
+
+
+def _load_spec(spec=None, spec_file=None, spec_stdin=False):
+    """Load compose JSON from exactly one compatible input source."""
+    selected = sum(value is not None for value in (spec, spec_file)) + int(spec_stdin)
+    if selected != 1:
+        raise ValueError("compose 必须且只能指定 --spec、--spec-file 或 --spec-stdin 之一")
+    if spec_file is not None:
+        try:
+            text = Path(spec_file).read_text(encoding="utf-8")
+        except OSError as e:
+            raise ValueError(f"无法读取 spec 文件: {e}") from e
+    elif spec_stdin:
+        text = sys.stdin.read()
+    else:
+        text = spec
+    if not text or not text.strip():
+        raise ValueError("spec 内容为空")
+    return _loads(text)
 
 
 def _run(fn, *args, **kwargs):
     """统一错误出口：非法输入打印到 stderr 并以 2 退出，不抛 traceback。"""
     try:
         return fn(*args, **kwargs)
-    except ValueError as e:
+    except (ValueError, OSError, json.JSONDecodeError) as e:
         sys.stderr.write(f"[error] {e}\n")
-        sys.exit(2)
+        raise SystemExit(2) from e
 
 
 def main():
@@ -95,14 +117,19 @@ def main():
     asg = ats.add_parser("suggest")
     asg.add_argument("--kp"); asg.add_argument("--kind"); asg.add_argument("--subject")
     acp = ats.add_parser("compose")
-    acp.add_argument("--spec", help="编排规格 JSON（--spec-schema 查看契约）")
-    acp.add_argument("--spec-schema", action="store_true", dest="spec_schema")
+    spec_group = acp.add_mutually_exclusive_group()
+    spec_group.add_argument("--spec", help="编排规格 JSON（--spec-schema 查看契约）")
+    spec_group.add_argument("--spec-file", help="从 UTF-8 文件读取编排规格 JSON")
+    spec_group.add_argument("--spec-stdin", action="store_true", help="从 stdin 读取编排规格 JSON")
+    acp.add_argument("--spec-schema", action="store_true", dest="spec_schema",
+                     help="输出 store 提供的 compose JSON Schema")
 
     rw = sub.add_parser("raw"); rws = rw.add_subparsers(dest="sub", required=True)
     rs = rws.add_parser("save"); rs.add_argument("--name", required=True)
     src = rs.add_mutually_exclusive_group(required=True)
     src.add_argument("--file", help="证据源文件路径（读取其内容落盘）")
     src.add_argument("--text", help="直接给定证据文本")
+    src.add_argument("--stdin", action="store_true", help="从 stdin 读取证据全文")
     rws.add_parser("list")
     rr = rws.add_parser("read"); rr.add_argument("--name", required=True)
 
@@ -133,7 +160,7 @@ def main():
             out = _run(S.add_asset, a.id, a.kind, a.title, a.file, subject=a.subject,
                        knowledge_point=a.kp, source_lesson=a.lesson,
                        params=_loads(a.params), tags=a.tags,
-                       parent_asset=a.parent_asset, assembly=_loads(a.assembly))
+                       parent_asset=a.parent_asset, assembly=_loads(a.assembly) if a.assembly is not None else None)
         elif a.sub == "list":
             out = S.list_assets(kind=a.kind, knowledge_point=a.kp, subject=a.subject)
         elif a.sub == "get":
@@ -147,13 +174,11 @@ def main():
         elif a.sub == "compose":
             if a.spec_schema:
                 out = S.compose_spec_schema()
-            elif a.spec:
-                out = _run(S.compose_asset, _loads(a.spec))
             else:
-                out = _run(S.compose_asset, _loads(a.spec))  # spec 缺失/非法 → 统一 stderr + exit 2
+                out = _run(S.compose_asset, _load_spec(a.spec, a.spec_file, a.spec_stdin))
     elif a.cmd == "raw":
         if a.sub == "save":
-            text = a.text if a.text else open(a.file, encoding="utf-8").read()
+            text = sys.stdin.read() if a.stdin else (a.text if a.text is not None else Path(a.file).read_text(encoding="utf-8"))
             out = _run(S.save_raw_evidence, a.name, text)
         elif a.sub == "list":
             out = S.list_raw()
@@ -164,4 +189,4 @@ def main():
 
 
 if __name__ == "__main__":
-    sys.exit(main())
+    sys.exit(_run(main))
