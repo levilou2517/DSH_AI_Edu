@@ -16,6 +16,9 @@
   .venv/bin/python services/shiban_cli.py asset add --id a1 --kind report --title 示例 --file out.json --kp DNA复制
   .venv/bin/python services/shiban_cli.py asset list [--kind report] [--kp ...] [--subject ...]
   .venv/bin/python services/shiban_cli.py asset get --id a1 | asset reuse --id a1
+  .venv/bin/python services/shiban_cli.py asset suggest --kp DNA复制 [--kind html]     # 先查后建：库存+契约+建议
+  .venv/bin/python services/shiban_cli.py asset compose --spec '{"page_id":"...","title":"...","sections":[...]}'
+  .venv/bin/python services/shiban_cli.py asset compose --spec-schema                # 查 spec 输入契约
 
 Agent 不直接碰文件；经此 CLI 或宿主服务访问 ~/.shiban/data。
 """
@@ -88,6 +91,12 @@ def main():
     ag = ats.add_parser("get"); ag.add_argument("--id", required=True)
     ar = ats.add_parser("reuse"); ar.add_argument("--id", required=True)
     asc = ats.add_parser("scan"); asc.add_argument("--dry-run", action="store_true")
+    # v0.4.3 编排：suggest=先查后建只读；compose=按 interface 校验喂数并装配页面
+    asg = ats.add_parser("suggest")
+    asg.add_argument("--kp"); asg.add_argument("--kind"); asg.add_argument("--subject")
+    acp = ats.add_parser("compose")
+    acp.add_argument("--spec", help="编排规格 JSON（--spec-schema 查看契约）")
+    acp.add_argument("--spec-schema", action="store_true", dest="spec_schema")
 
     rw = sub.add_parser("raw"); rws = rw.add_subparsers(dest="sub", required=True)
     rs = rws.add_parser("save"); rs.add_argument("--name", required=True)
@@ -133,6 +142,15 @@ def main():
             out = _run(S.reuse_asset, a.id)
         elif a.sub == "scan":
             out = S.scan_existing(dry_run=a.dry_run)
+        elif a.sub == "suggest":
+            out = _run(S.suggest_assets, knowledge_point=a.kp, kind=a.kind, subject=a.subject)
+        elif a.sub == "compose":
+            if a.spec_schema:
+                out = S.compose_spec_schema()
+            elif a.spec:
+                out = _run(S.compose_asset, _loads(a.spec))
+            else:
+                out = _run(S.compose_asset, _loads(a.spec))  # spec 缺失/非法 → 统一 stderr + exit 2
     elif a.cmd == "raw":
         if a.sub == "save":
             text = a.text if a.text else open(a.file, encoding="utf-8").read()
