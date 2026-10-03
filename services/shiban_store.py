@@ -390,14 +390,23 @@ def add_asset(asset_id, kind, title, file_path, subject=None, knowledge_point=No
         dup = m.execute("SELECT asset_id FROM assets WHERE content_hash=?", (digest,)).fetchone()
         if dup:
             return {"ok": True, "existed": True, "asset_id": dup["asset_id"], "content_hash": digest}
-        # 落盘到 assets/<asset_id>/ 并做 D4 写盘校验（防瞬时 0 字节）
+        if m.execute("SELECT 1 FROM assets WHERE asset_id=?", (asset_id,)).fetchone():
+            raise ValueError(f"素材 id 已存在: {asset_id}（复用请用 asset reuse，或换 id）")
+        # 落盘到 assets/<asset_id>/main<ext>（固定主文件名，不随源文件名漂移）+ meta.json
         dest_dir = os.path.join(DATA_DIR, "assets", asset_id)
         os.makedirs(dest_dir, exist_ok=True)
-        dest = os.path.join(dest_dir, os.path.basename(file_path))
+        ext = os.path.splitext(file_path)[1] or ".html"
+        dest = os.path.join(dest_dir, "main" + ext)
         shutil.copyfile(file_path, dest)
         if os.path.getsize(dest) == 0 and os.path.getsize(file_path) > 0:
             raise RuntimeError(f"写盘校验失败：{dest} 为 0 字节（源文件非空）")
         now = _now()
+        # meta.json：素材自描述（含契约 interface），脱离 DB 也可读
+        with open(os.path.join(dest_dir, "meta.json"), "w", encoding="utf-8") as mf:
+            json.dump({"asset_id": asset_id, "kind": kind, "title": title, "subject": subject,
+                       "knowledge_point": knowledge_point, "params": params, "tags": tags,
+                       "parent_asset": parent_asset, "assembly": assembly,
+                       "created_at": now, "external": True}, mf, ensure_ascii=False, indent=2)
         rel = os.path.relpath(dest, ROOT)
         assembly_json = json.dumps(assembly, ensure_ascii=False) if assembly is not None else None
         m.execute(

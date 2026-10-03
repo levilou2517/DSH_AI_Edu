@@ -3,6 +3,14 @@ name: html-material
 description: 教学素材原子/页面编排技能。管理可复用、可组合的 HTML 教学素材（碱基结构、细胞周期、交互练习件等）。原子是带契约数据接口的组件片段，页面是若干原子的编排组合，层级自由（同一素材可被更上层复用）。产物自包含单文件 HTML、优先零外部依赖；确需外库时经 assets/vendor 内化。先查后建：能复用不新建；编排前必询问教师预期交互。
 ---
 
+## 素材归属：外部成长素材（不随师伴本体迁移）
+
+> 原子素材（HTML/vendor）是**运行时外部成长数据**，不是师伴本体的一部分：
+> - 存于 `SHIBAN_ROOT/data/assets/`（外部素材区，运行时数据根），**不随 DSH_AI_Edu/预设 部署迁移**
+> - 随教学使用**不断扩增**（新原子、新 vendor 库按需加入），跨会话/跨工作区继承
+> - 不得写进师伴本体仓（`材料/模版/`、`DSH_AI_Edu` 源码）——那些随本体迁移的应是"教案模板/文档"，不是运行时原子
+> - vendor 依赖库（如 smiles-drawer）内化在 `data/assets/vendor/<lib>@<v>/`，相对引用、不 runtime 外链
+
 ## 数据层入口
 
 一律走 CLI 或素材服务 Tool，不直接编辑文件：
@@ -14,11 +22,12 @@ bin/shiban-store asset add  --id <aid> --kind html --title <t> --file <html> \
 bin/shiban-store asset reuse --id <aid>
 ```
 宿主数据服务 Tool（若已挂载）等价，能力更原生：`shiban_asset_list` 等。
+（`asset add` 会把源 HTML 拷入 `data/assets/<aid>/` 并登记；vendor 依赖放 `data/assets/vendor/`。）
 
 ## 素材层次（一表多用，无固定层级）
 
-- **原子组件**：`assets/<atom>/*.html`，自包含、声明输入 schema。
-- **编排页面**：`assets/<page>/*.html`，引用若干原子 + 喂数据；prod 也可复用原子（先查后建）而非重写。
+- **原子组件**：`data/assets/<atom>/*.html`，自包含、声明输入 schema。
+- **编排页面**：`data/assets/<page>/*.html`，引用若干原子 + 喂数据；也可复用原子（先查后建）而非重写。
 - **自由层级**：同一素材当页面或当组件均可——被更上层 `parent_asset` 引用即降为组件。
 
 ## 原子组件数据接口（契约 schema）
