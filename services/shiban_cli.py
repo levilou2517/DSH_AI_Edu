@@ -85,6 +85,14 @@ def main():
     ag = ats.add_parser("get"); ag.add_argument("--id", required=True)
     ar = ats.add_parser("reuse"); ar.add_argument("--id", required=True)
 
+    rw = sub.add_parser("raw"); rws = rw.add_subparsers(dest="sub", required=True)
+    rs = rws.add_parser("save"); rs.add_argument("--name", required=True)
+    src = rs.add_mutually_exclusive_group(required=True)
+    src.add_argument("--file", help="证据源文件路径（读取其内容落盘）")
+    src.add_argument("--text", help="直接给定证据文本")
+    rws.add_parser("list")
+    rr = rws.add_parser("read"); rr.add_argument("--name", required=True)
+
     a = ap.parse_args()
     out = None
     if a.cmd == "init":
@@ -118,6 +126,14 @@ def main():
             out = S.get_asset(a.id)
         elif a.sub == "reuse":
             out = _run(S.reuse_asset, a.id)
+    elif a.cmd == "raw":
+        if a.sub == "save":
+            text = a.text if a.text else open(a.file, encoding="utf-8").read()
+            out = _run(S.save_raw_evidence, a.name, text)
+        elif a.sub == "list":
+            out = S.list_raw()
+        elif a.sub == "read":
+            out = _run(S.read_raw, a.name)
     print(json.dumps(out, ensure_ascii=False, indent=2))
     return 0
 

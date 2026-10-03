@@ -28,6 +28,7 @@ HOME = os.path.expanduser("~")
 ROOT = os.environ.get("SHIBAN_ROOT", os.path.join(HOME, ".shiban"))
 DATA_DIR = os.path.join(ROOT, "data")
 SHIBAN_DATA = os.path.join(DATA_DIR, "shiban")
+RAW_DIR = os.path.join(SHIBAN_DATA, "raw")
 META_DB = os.path.join(DATA_DIR, "meta.db")
 REF_DB = os.path.join(DATA_DIR, "reference.db")
 
@@ -129,12 +130,19 @@ def _valid_name(component):
         raise ValueError(f"非法标识符: {component!r}")
 
 
+def _valid_evidence_name(name):
+    """证据文件名：允许点（扩展名），禁路径分隔与 '..'。"""
+    if not re.fullmatch(r"[\w\u4e00-\u9fff.-]+", name) or ".." in name:
+        raise ValueError(f"非法证据文件名: {name!r}")
+
+
 # ---------- 初始化 ----------
 def init(force=False):
     """建立骨架与表；force=True 时只清空聚合库（不动 meta 主体数据）。"""
     os.makedirs(os.path.join(DATA_DIR, "classes"), exist_ok=True)
     os.makedirs(os.path.join(DATA_DIR, "observations"), exist_ok=True)
     os.makedirs(os.path.join(DATA_DIR, "assets"), exist_ok=True)
+    os.makedirs(RAW_DIR, exist_ok=True)
     meta = _connect(META_DB, META_SCHEMA)
     ref = _connect(REF_DB, REF_SCHEMA)
     if force:
@@ -292,6 +300,53 @@ def list_observations(student_id=None, class_id=None):
 
 
 # ---------- 跨班聚合借鉴（只读,不露个体）----------
+# ---------- 原始证据（raw/，D1 唯一落盘目录） ----------
+def save_raw_evidence(name, text):
+    """保存原始证据（转录/记录/笔记）。
+
+    契约：raw/ 只追加、不改写——同名文件已存在则拒绝（更正请另存新版本名）。
+    D4 写盘校验：写入后字节数必须与内容一致，否则删除半成品并报错。
+    name 过 _valid_evidence_name（允许扩展名，禁路径穿越）。"""
+    _valid_evidence_name(name)
+    if not isinstance(text, str) or not text.strip():
+        raise ValueError("证据内容为空，拒绝落盘")
+    path = os.path.join(RAW_DIR, name)
+    os.makedirs(RAW_DIR, exist_ok=True)
+    if os.path.exists(path):
+        raise ValueError(f"证据已存在，只追加不改写；更正请另存新版本名: {name}")
+    with open(path, "w", encoding="utf-8") as f:
+        f.write(text)
+    expected = len(text.encode("utf-8"))
+    if os.path.getsize(path) != expected:
+        try:
+            os.remove(path)
+        except OSError:
+            pass
+        raise RuntimeError(f"写盘校验失败: {name} 期望 {expected}B 实际 {os.path.getsize(path)}B")
+    return {"ok": True, "name": name, "path": path, "bytes": expected}
+
+
+def list_raw():
+    if not os.path.isdir(RAW_DIR):
+        return []
+    return sorted(
+        ({"name": n, "bytes": os.path.getsize(os.path.join(RAW_DIR, n)),
+          "mtime": datetime.fromtimestamp(os.path.getmtime(os.path.join(RAW_DIR, n)), timezone.utc).isoformat()}
+         for n in os.listdir(RAW_DIR)
+         if os.path.isfile(os.path.join(RAW_DIR, n))),
+        key=lambda e: e["name"],
+    )
+
+
+def read_raw(name):
+    _valid_evidence_name(name)
+    path = os.path.join(RAW_DIR, name)
+    if not os.path.isfile(path):
+        raise ValueError(f"证据不存在: {name}")
+    with open(path, encoding="utf-8") as f:
+        return {"ok": True, "name": name, "content": f.read()}
+
+
 # ---------- 素材资产 ----------
 ASSET_KINDS = ("html", "report", "transcript", "note")
 
