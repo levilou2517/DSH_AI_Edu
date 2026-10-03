@@ -15,9 +15,11 @@
 Agent 不直接碰文件，只经二者访问，达成「数据独立 + 跨会话继承」。
 """
 import argparse
+import hashlib
 import json
 import os
 import re
+import shutil
 import sqlite3
 import sys
 from datetime import datetime, timezone
@@ -25,6 +27,7 @@ from datetime import datetime, timezone
 HOME = os.path.expanduser("~")
 ROOT = os.environ.get("SHIBAN_ROOT", os.path.join(HOME, ".shiban"))
 DATA_DIR = os.path.join(ROOT, "data")
+SHIBAN_DATA = os.path.join(DATA_DIR, "shiban")
 META_DB = os.path.join(DATA_DIR, "meta.db")
 REF_DB = os.path.join(DATA_DIR, "reference.db")
 
@@ -75,6 +78,21 @@ CREATE TABLE IF NOT EXISTS observations (
   integrated    TEXT,
   pending_todo  TEXT
 );
+CREATE TABLE IF NOT EXISTS assets (
+  asset_id        TEXT PRIMARY KEY,   -- 过 _valid_name：防路径穿越
+  kind            TEXT NOT NULL,      -- html | report | transcript | note | ...
+  title           TEXT NOT NULL,
+  subject         TEXT,               -- 学科，可空兼容跨学科
+  knowledge_point TEXT,               -- 对齐 lessons.knowledge_point → 跨课检索
+  source_lesson   TEXT,               -- 关联 lesson_id（可空）
+  params          TEXT,               -- 生成参数 JSON（可空）
+  tags            TEXT,               -- 逗号分隔
+  file_path       TEXT NOT NULL,      -- 相对 ROOT 的产物路径
+  content_hash    TEXT,               -- SHA-256 → 查重/复用（先查后建）
+  reuse_count     INTEGER DEFAULT 0,
+  created_at      TEXT,
+  updated_at      TEXT
+);
 """
 
 REF_SCHEMA = """
@@ -116,6 +134,7 @@ def init(force=False):
     """建立骨架与表；force=True 时只清空聚合库（不动 meta 主体数据）。"""
     os.makedirs(os.path.join(DATA_DIR, "classes"), exist_ok=True)
     os.makedirs(os.path.join(DATA_DIR, "observations"), exist_ok=True)
+    os.makedirs(os.path.join(DATA_DIR, "assets"), exist_ok=True)
     meta = _connect(META_DB, META_SCHEMA)
     ref = _connect(REF_DB, REF_SCHEMA)
     if force:
@@ -273,6 +292,90 @@ def list_observations(student_id=None, class_id=None):
 
 
 # ---------- 跨班聚合借鉴（只读,不露个体）----------
+# ---------- 素材资产 ----------
+ASSET_KINDS = ("html", "report", "transcript", "note")
+
+
+def add_asset(asset_id, kind, title, file_path, subject=None, knowledge_point=None,
+              source_lesson=None, params=None, tags=None):
+    """登记素材。file_path 为绝对路径：拷入 assets/<id>/ 并登记。
+
+    先查后建：若 file 内容 SHA-256 与既有 asset 相同 → 不重复入库，
+    返回 {ok, existed, asset_id}。"""
+    _valid_name(asset_id)
+    if kind not in ASSET_KINDS:
+        raise ValueError(f"未知素材类型: {kind!r}（允许 {ASSET_KINDS}）")
+    if not os.path.isfile(file_path):
+        raise ValueError(f"源文件不存在: {file_path}")
+    with open(file_path, "rb") as f:
+        digest = hashlib.sha256(f.read()).hexdigest()
+    m = _connect(META_DB, META_SCHEMA)
+    try:
+        dup = m.execute("SELECT asset_id FROM assets WHERE content_hash=?", (digest,)).fetchone()
+        if dup:
+            return {"ok": True, "existed": True, "asset_id": dup["asset_id"], "content_hash": digest}
+        # 落盘到 assets/<asset_id>/ 并做 D4 写盘校验（防瞬时 0 字节）
+        dest_dir = os.path.join(DATA_DIR, "assets", asset_id)
+        os.makedirs(dest_dir, exist_ok=True)
+        dest = os.path.join(dest_dir, os.path.basename(file_path))
+        shutil.copyfile(file_path, dest)
+        if os.path.getsize(dest) == 0 and os.path.getsize(file_path) > 0:
+            raise RuntimeError(f"写盘校验失败：{dest} 为 0 字节（源文件非空）")
+        now = _now()
+        rel = os.path.relpath(dest, ROOT)
+        m.execute(
+            "INSERT INTO assets(asset_id,kind,title,subject,knowledge_point,source_lesson,"
+            "params,tags,file_path,content_hash,reuse_count,created_at,updated_at)"
+            " VALUES(?,?,?,?,?,?,?,?,?,?,?,?,?)",
+            (asset_id, kind, title, subject, knowledge_point, source_lesson,
+             json.dumps(params, ensure_ascii=False) if params is not None else None,
+             tags, rel, digest, 0, now, now),
+        )
+        m.commit()
+        return {"ok": True, "existed": False, "asset_id": asset_id, "content_hash": digest}
+    finally:
+        m.close()
+
+
+def get_asset(asset_id):
+    m = _connect(META_DB, META_SCHEMA)
+    row = m.execute("SELECT * FROM assets WHERE asset_id=?", (asset_id,)).fetchone()
+    m.close()
+    return dict(row) if row else None
+
+
+def list_assets(kind=None, knowledge_point=None, subject=None):
+    m = _connect(META_DB, META_SCHEMA)
+    sql = "SELECT * FROM assets WHERE 1=1"
+    args = []
+    if kind:
+        sql += " AND kind=?"; args.append(kind)
+    if knowledge_point:
+        sql += " AND knowledge_point=?"; args.append(knowledge_point)
+    if subject:
+        sql += " AND subject=?"; args.append(subject)
+    sql += " ORDER BY created_at DESC"
+    rows = [dict(r) for r in m.execute(sql, args).fetchall()]
+    m.close()
+    return rows
+
+
+def reuse_asset(asset_id):
+    """复用计数 +1，回显 file_path（绝对路径）。"""
+    m = _connect(META_DB, META_SCHEMA)
+    try:
+        row = m.execute("SELECT asset_id,file_path FROM assets WHERE asset_id=?", (asset_id,)).fetchone()
+        if not row:
+            raise ValueError(f"素材不存在: {asset_id}")
+        m.execute("UPDATE assets SET reuse_count=reuse_count+1,updated_at=? WHERE asset_id=?",
+                  (_now(), asset_id))
+        m.commit()
+        return {"ok": True, "asset_id": asset_id,
+                "file_path": os.path.join(ROOT, row["file_path"])}
+    finally:
+        m.close()
+
+
 def query_reference(scaffold_type=None, knowledge_point=None, cognitive_level=None, cohort=None):
     ref = _connect(REF_DB, REF_SCHEMA)
     sql = ("SELECT class_family,scaffold_type,knowledge_point,cognitive_level,n,avg_pass_rate,"
