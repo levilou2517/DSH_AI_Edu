@@ -29,6 +29,14 @@ from pathlib import Path
 
 import shiban_store as S
 
+# Windows/中文 locale 下 stdout 默认是 GBK(cp936)，而本 CLI 的 stdout 会被素材 Tool
+# 按 UTF-8 解析（JSON.parse），中文会因此解析失败。在进程内固定为 UTF-8，
+# 使编码不依赖 locale，也不依赖启动器注入的环境变量 ——
+# 直接 `python services/shiban_cli.py <cmd>` 调用时同样正确。
+for _stream in (sys.stdout, sys.stderr):
+    if hasattr(_stream, "reconfigure"):
+        _stream.reconfigure(encoding="utf-8")
+
 
 def _loads(s, default=None):
     """Parse optional JSON values; malformed JSON is a user input error."""
