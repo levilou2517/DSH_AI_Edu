@@ -1,6 +1,18 @@
 # 更新日志
 
-## v0.5.0 — 空壳版（进行中）
+## v0.5.0 — 空壳版
+
+### 发布准备
+
+- **包名定为 `@levilou/dsh-shiban`**，发布到 npm（`private: false`、`publishConfig.access: public`、`license: MIT`）。
+  此前本地开发用的是 `@local/dsh-shiban-v0-5-0`；改为稳定的 npm 包名 + semver 版本，
+  多版本并存的真正隔离点放在**预设 id（`ShiBan_V*`）与数据根（`versions/*`）**。
+- `package.json` 增加 `files` 白名单，打包排除 `__pycache__`、`logs/`、`scripts/`、`tools/`。
+  实测：270 文件 / 897 KB（压缩）/ 4.0 MB（解压）。
+
+---
+
+## v0.5.0 — 重构内容
 
 一次彻底重构。目标不是加功能，而是把 v0.4.x "文档、PPT、代码三张皮"的问题从根上解决。
 

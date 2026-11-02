@@ -4,8 +4,14 @@
 
 装完是一个**空壳**：人格、六项原子技能、数据层就位——教材、素材与课堂证据由你自行导入或在使用中逐步积累。
 
+```bash
+dsh plugin --profile web add @levilou/dsh-shiban
 ```
-dsh plugin --profile web add shiban-0.5.0.tgz
+
+或从本地包安装：
+
+```bash
+dsh plugin --profile web add ./shiban-0.5.0.tgz
 ```
 
 ---
@@ -40,8 +46,7 @@ dsh plugin --profile web add shiban-0.5.0.tgz
 ### 安装
 
 ```bash
-# 下载 dist/shiban-0.5.0.tgz 后
-dsh plugin --profile web add ./shiban-0.5.0.tgz
+dsh plugin --profile web add @levilou/dsh-shiban
 ```
 
 装好后：预设「**师伴 v0.5.0**」自动出现、数据根自动建好、六项技能随包加载。
@@ -152,7 +157,7 @@ shiban-store ctx pack --for lesson-plan --kw 半保留
 
 | 项 | 格式 |
 |---|---|
-| 包名 | `@local/dsh-shiban-v0-5-0` |
+| 包名 | `@levilou/dsh-shiban`（版本见 `version` 字段） |
 | 预设 | `ShiBan_V0_5_0` · 显示「师伴 v0.5.0」 |
 | 数据根 | `~/.shiban/versions/v0_5_0/` |
 

@@ -13,8 +13,8 @@ shiban-store migrate run --yes        # 仅当你要继承旧版本的素材时
 
 | 项 | 格式 | 示例 |
 |---|---|---|
-| 包名 | `@local/dsh-shiban-v<X-Y-Z>` | `@local/dsh-shiban-v0-5-0` |
-| 预设 id | `ShiBan_V<X>_<Y>_<Z>` | `ShiBan_V0_5_0` |
+| 包名 | 稳定名 + semver 版本 | `@levilou/dsh-shiban` |
+| 预设 id | `ShiBan_V<X>_<Y>_<Z>`（带版本，避免新旧冲突） | `ShiBan_V0_5_0` |
 | 预设显示名 | `师伴 v<X.Y.Z>` | 师伴 v0.5.0 |
 | 数据根 | `$SHIBAN_ROOT/versions/v<X_Y_Z>/` | `~/.shiban/versions/v0_5_0/` |
 
@@ -83,20 +83,21 @@ dsh plugin --profile web add /tmp/shiban-0.5.0.tgz
 
 DSH Web → 侧边栏 **插件** → 安装 → 填入本地路径或包地址。
 
-### 方式 C：npm 源（若已发布到 registry）
+### 方式 B：npm（推荐，已发布）
 
 ```bash
-dsh plugin --profile web add @local/dsh-shiban@0.5.0
+dsh plugin --profile web add @levilou/dsh-shiban
+dsh plugin --profile web add @levilou/dsh-shiban@0.5.0   # 锁定版本
 ```
 
 ---
 
 ## 三、⚠️ 从 v0.4.x 升级：必须先卸载旧包
 
-v0.4.x 的包名是 `@local/dsh-shiban-preset`，preset id 也是 `shiban`。
+v0.4.x 的包名是 `@levilou/dsh-shiban-preset`，preset id 也是 `shiban`。
 **两个包同时启用会因 preset id 重复而加载失败。**
 
-新版包名带版本（`@local/dsh-shiban-v0-5-0`），**原则上可与旧版并存**。
+新版包名带版本（`@levilou/dsh-shiban`），**原则上可与旧版并存**。
 但旧版的数据根是扁平的（`~/.shiban/data`），且旧版的 preset id 也是 `shiban`，
 若两者同时启用，界面上会出现两个不同的预设，容易混淆。
 
@@ -104,7 +105,7 @@ v0.4.x 的包名是 `@local/dsh-shiban-preset`，preset id 也是 `shiban`。
 
 ```bash
 # 1. 卸载旧版
-dsh plugin --profile web remove @local/dsh-shiban-preset
+dsh plugin --profile web remove @levilou/dsh-shiban-preset
 
 # 2. 安装新版
 dsh plugin --profile web add /path/to/V0.5.0
@@ -148,7 +149,7 @@ dsh --profile web --dump-config | grep -A3 'preset-shiban'
 python3 -c "import json;print(json.load(open('$HOME/.dsh/profiles/web/package.json'))['dsh']['profile']['bundles'])"
 ```
 
-最后一条里必须出现 `@local/dsh-shiban`。没有就说明安装没成功。
+最后一条里必须出现 `@levilou/dsh-shiban`。没有就说明安装没成功。
 
 ### 会话里没有六项技能
 
@@ -277,7 +278,7 @@ $SHIBAN_ROOT/                默认 ~/.shiban（本系列根）
 ## 八、卸载
 
 ```bash
-dsh plugin --profile web remove @local/dsh-shiban
+dsh plugin --profile web remove @levilou/dsh-shiban
 ```
 
 数据仍在 `~/.shiban`。彻底清除：`rm -rf ~/.shiban`（**先备份**）。

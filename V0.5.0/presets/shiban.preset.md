@@ -10,7 +10,7 @@
 | preset id | `shiban` |
 | 显示名 | 师伴 |
 | 排序 | 10 |
-| 所有者 | 本 bundle（`@local/dsh-shiban`） |
+| 所有者 | 本 bundle（`@levilou/dsh-shiban`） |
 | 声明位置 | `cordis.patch.yml` → `- id: preset-shiban` |
 
 ## 组成

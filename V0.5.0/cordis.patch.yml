@@ -19,7 +19,7 @@
     # $SHIBAN_ROOT/data/logs/runtime.log，而不是让用户在会话里自己撞见。
     # 本行不 provide 任何 service，因此不需要 realm。
     - id: shiban-runtime-v0-5-0
-      name: '@local/dsh-shiban-v0-5-0'
+      name: '@levilou/dsh-shiban'
 
     # ── 师伴预设 ───────────────────────────────────────────────────────────
     #
@@ -218,7 +218,7 @@
               bundledSkillDir: !!js >-
                 process.getBuiltinModule('node:path').join(
                   process.getBuiltinModule('node:path').dirname(
-                    process.getBuiltinModule('node:module').createRequire(baseUrl).resolve('@local/dsh-shiban-v0-5-0/package.json')
+                    process.getBuiltinModule('node:module').createRequire(baseUrl).resolve('@levilou/dsh-shiban/package.json')
                   ),
                   'skills'
                 )

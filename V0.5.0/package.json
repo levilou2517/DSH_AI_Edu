@@ -1,9 +1,9 @@
 {
-  "name": "@local/dsh-shiban-v0-5-0",
+  "name": "@levilou/dsh-shiban",
   "version": "0.5.0",
-  "private": true,
+  "private": false,
   "type": "module",
-  "description": "师伴（shiban）——面向师范生与新手教师的循证教学辅助 Agent（空壳发行版）",
+  "description": "师伴（ShiBan）—— 面向师范生与新手教师的循证教学辅助 Agent。装完是空壳，教材与素材由你导入并逐步积累。",
   "dsh": {
     "bundle": {
       "patch": "./cordis.patch.yml"
@@ -16,13 +16,18 @@
   },
   "files": [
     "lib/",
-    "vendor/",
+    "vendor/bin/",
+    "vendor/services/",
+    "vendor/python/",
     "skills/",
     "framework/",
     "contracts/",
     "docs/",
+    "presets/",
     "cordis.patch.yml",
-    "VERSION"
+    "VERSION",
+    "README.md",
+    "CHANGELOG.md"
   ],
   "engines": {
     "node": ">=20"
@@ -31,5 +36,24 @@
     "presetId": "ShiBan_V0_5_0",
     "presetName": "师伴 v0.5.0",
     "dataScheme": "shiban-data/1"
+  },
+  "keywords": [
+    "dsh",
+    "dsh-plugin",
+    "education",
+    "teacher",
+    "lesson-plan",
+    "agent-preset",
+    "循证教学",
+    "师范生"
+  ],
+  "license": "MIT",
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/levilou2517/shiban-dist.git"
+  },
+  "homepage": "https://github.com/levilou2517/shiban-dist#readme",
+  "publishConfig": {
+    "access": "public"
   }
 }
