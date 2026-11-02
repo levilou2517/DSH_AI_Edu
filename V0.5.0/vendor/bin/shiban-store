@@ -1,0 +1,57 @@
+#!/usr/bin/env bash
+# shiban-store — 师伴命令行入口（v0.5.0，跨平台）
+#
+# 用法： shiban-store <命令> [参数]
+# 数据根： $SHIBAN_ROOT，未设置时用 ~/.shiban。
+#
+# Python 解析顺序：
+#   1. $SHIBAN_PY（显式指定）
+#   2. 包内 .venv/bin/python
+#   3. 系统 python3 / python（并逐个试跑 -c '' 验活）
+#   4. DSH 自带运行时（Windows: ~/.dsh/dsh-runtimes/*/dependencies/python/python.exe）
+#
+# 依赖隔离：优先把 vendor/python/lib 放到 PYTHONPATH 最前，使 CLI 只依赖随包
+# 分发的标准库闭包，不受宿主 Python 版本与已装包影响。
+set -euo pipefail
+
+SELF_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+PKG_DIR="$(cd "$SELF_DIR/../.." && pwd)"
+CLI="$PKG_DIR/vendor/services/shiban_cli.py"
+VENDOR_LIB="$PKG_DIR/vendor/python/lib"
+
+die() { printf '[error] %s\n' "$*" >&2; exit 2; }
+
+try_py() {
+  [ -n "${1:-}" ] || return 1
+  { [ -x "$1" ] || command -v "$1" >/dev/null 2>&1; } || return 1
+  "$1" -E -c '' >/dev/null 2>&1
+}
+
+PY=""
+if [ -n "${SHIBAN_PY:-}" ]; then
+  try_py "$SHIBAN_PY" || die "SHIBAN_PY=$SHIBAN_PY 无法执行"
+  PY="$SHIBAN_PY"
+else
+  for cand in "$PKG_DIR/.venv/bin/python" python3 python; do
+    if try_py "$cand"; then PY="$cand"; break; fi
+  done
+  if [ -z "$PY" ]; then
+    for cand in "$HOME"/.dsh/dsh-runtimes/*/dependencies/python/python.exe python.exe py; do
+      if try_py "$cand"; then PY="$cand"; break; fi
+    done
+  fi
+fi
+
+if [ -z "$PY" ]; then
+  die "找不到 Python 3。请安装 python3，或设置 SHIBAN_PY 指向解释器。"
+fi
+
+[ -f "$CLI" ] || die "缺少 CLI：$CLI（包可能未完整解压）"
+
+if [ -d "$VENDOR_LIB" ]; then
+  export PYTHONPATH="$VENDOR_LIB${PYTHONPATH:+:$PYTHONPATH}"
+fi
+export PYTHONUTF8=1
+export PYTHONIOENCODING=utf-8
+
+exec "$PY" "$CLI" "$@"

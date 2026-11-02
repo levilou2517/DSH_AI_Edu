@@ -1,0 +1,48 @@
+{
+  "$comment": "子 Agent → 指挥 Agent 的结构化回执。DSH 只回传最终文本，因此回执是唯一回传通道。",
+  "schema": "shiban.receipt/1",
+  "required": ["task_id", "atom", "status", "skills_loaded", "artifacts", "one_liner"],
+  "properties": {
+    "task_id": "调用方传入的任务标识，原样带回",
+    "atom": "原子名：lesson-plan | quiz | class-eval | class-profile | teacher-growth | html-material",
+    "status": "ok | partial | failed",
+    "skills_loaded": {
+      "type": "array",
+      "rule": "必须实际调用过 skill 工具加载；为空视为失败（防止技能漂移）"
+    },
+    "artifacts": {
+      "type": "array",
+      "items": "{ kind, id, rev }",
+      "rule": "id 与 rev 由 shiban-store 返回，不得自行编造"
+    },
+    "asked": {
+      "type": "array",
+      "desc": "本轮向指挥提出的问题（对应 needs_teacher）",
+      "rule": "教案生成必填；为空说明没有以提问方式工作"
+    },
+    "teacher_decisions": {
+      "type": "array",
+      "items": "{ question, answer, at }",
+      "desc": "本轮已获得的教师决定，含原话"
+    },
+    "needs_teacher": {
+      "type": "array",
+      "items": "{ id, question, options[], why }",
+      "rule": "子 Agent 不能直接调用 ask_user_question（DELEGATED_CALLER），必须交回指挥统一发出"
+    },
+    "degrade": {
+      "type": "array",
+      "items": "string",
+      "rule": "缺什么、影响哪一部分，必须显式"
+    },
+    "next_suggest": {
+      "type": "array",
+      "items": "{ atom, why }",
+      "desc": "建议的下一步原子"
+    },
+    "one_liner": {
+      "type": "string",
+      "rule": "≤60 字，给教师看的一句话结论；不回读产物正文"
+    }
+  }
+}

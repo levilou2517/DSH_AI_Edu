@@ -1,0 +1,40 @@
+{
+  "atom": "html-material",
+  "purpose": "先查后建，复用优先；外来 HTML 先体检后入库。",
+  "inputs": {
+    "assets": {
+      "why": "避免重复造教具",
+      "give": "suggest 命中的原子/页面 + interface"
+    },
+    "templates": {
+      "why": "优先用模板填充而不是从零生成",
+      "give": "可用模板与槽位"
+    },
+    "kp": {
+      "why": "分类与检索的主键",
+      "give": "知识点标识"
+    }
+  },
+  "rules": [
+    "命中即 reuse（计数）后使用，不新建",
+    "外来 HTML 先 asset triage 出报告，审后再 import",
+    "license=unknown 的素材不随导出包分发",
+    "compose 每节 iframe sandbox=allow-scripts，禁止 allow-same-origin"
+  ],
+  "question_budget": {
+    "pending_threshold": 5,
+    "max_per_round": 3,
+    "min_rounds": 0,
+    "max_rounds": 2,
+    "must_answer": [],
+    "ask_only_when": "交互目标未知时"
+  },
+  "theory": {
+    "digests": [
+      "pck-zpd.md"
+    ],
+    "read_with": "shiban-store theory explain --file <name>",
+    "cite_with": "shiban-store theory cite --id <T-BUILTIN-nnn> --page <N> --quote '<≤40字>'",
+    "rule": "断言理论依据必须带页码；标〔推断〕的不是文献结论"
+  }
+}

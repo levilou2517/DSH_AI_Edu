@@ -1,0 +1,17 @@
+{
+  "$comment": "师伴 v0.5.0 共享约定。所有服务模块只依赖此文件，不各自定义常量。",
+  "version": "0.5.0",
+  "root_env": "SHIBAN_ROOT",
+  "default_root": "~/.shiban",
+  "artifact_kinds": ["task", "lp", "les", "quiz", "ev", "mev", "growth", "asset", "pref"],
+  "envelope_fields": ["schema", "kind", "id", "rev", "status", "created_at", "updated_at", "producer", "subject_line", "refs", "citations", "degrade", "controversy", "payload"],
+  "statuses": ["in_progress", "confirmed", "discarded", "stale", "archived"],
+  "views": ["index", "digest", "section", "full"],
+  "id_pattern": "^(task|lp|les|quiz|ev|mev|growth|asset|pref)-[\\w\\u4e00-\\u9fff.-]+$",
+  "corpus_kinds": ["textbook", "standard", "paper", "reference", "personal"],
+  "evidence_levels": ["rct", "quasi", "small-n", "review", "opinion", "unknown"],
+  "asset_categories": ["demo", "interactive", "diagram", "quiz-widget", "calc", "sim", "other"],
+  "asset_stages": ["导入", "建构", "巩固", "检测", "拓展", "任意"],
+  "asset_licenses": ["own", "cc-by", "unknown", "restricted"],
+  "asset_origins": ["generated", "imported-web", "imported-colleague", "textbook-pack", "unknown"]
+}

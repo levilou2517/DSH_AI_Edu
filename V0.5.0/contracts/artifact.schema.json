@@ -1,0 +1,31 @@
+{
+  "schema": "shiban.artifact/1",
+  "kind": "lesson",
+  "id": "les-<scope>-<slug>-<sha4>",
+  "rev": 1,
+  "status": "in_progress",
+  "created_at": "ISO-8601",
+  "updated_at": "ISO-8601",
+  "producer": { "atom": "lesson-plan", "skills_loaded": ["lesson-plan"] },
+  "subject_line": {
+    "scope": "c1",
+    "topic": "",
+    "date": "",
+    "kp": []
+  },
+  "refs": [
+    { "role": "candidate", "id": "lp-..." },
+    { "role": "lesson", "id": "les-..." }
+  ],
+  "citations": [
+    { "corpus_id": "bx2", "book_page": 55, "pdf_page": 64, "quote": "", "section": "S1.curriculum" }
+  ],
+  "degrade": [
+    { "what": "corpus", "reason": "未导入教材，引用无页码", "affects": ["S1.citation"] }
+  ],
+  "controversy": [
+    { "section": "S4.objectives[2]", "issue": "", "my_view": "", "teacher": "pending" }
+  ],
+  "payload": {},
+  "history": []
+}

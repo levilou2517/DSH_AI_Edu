@@ -1,0 +1,21 @@
+{
+  "$comment": "上下文包配方：定义各原子从 ctx pack 拿到什么。配方是数据，教师可改。",
+  "location": "framework/ctx-recipes/<atom>.json；$SHIBAN_ROOT/recipes/<atom>.json 可覆盖",
+  "atoms": ["lesson-plan", "quiz", "class-eval", "class-profile", "teacher-growth", "html-material"],
+  "common_fields": {
+    "for": "原子名",
+    "root": "SHIBAN_ROOT 绝对路径",
+    "version": "师伴版本",
+    "preferences": "来自已确认的 pref 产物；所有原子都带",
+    "degrade": "本包内已发生的降级说明"
+  },
+  "per_atom": {
+    "lesson-plan": ["corpus", "profile(支架通过率)", "carry_over(未采纳建议/未关闭待办)", "assets", "recipe(模板槽位)"],
+    "quiz": ["lesson(S4 目标 + S8 支架环节)", "history(上次各题命中率)", "profile(薄弱知识点)"],
+    "class-eval": ["lesson(S8 环节与意图)", "quiz(题目与归因绑定)", "evidence(L0 预览)"],
+    "class-profile": ["ev/mev 索引", "graph 聚合"],
+    "teacher-growth": ["ev/mev 的 index 视图", "偏好"],
+    "html-material": ["assets(可复用原子/页面)", "templates(可用模板)", "kp"]
+  },
+  "size_rule": "包体积目标 ≤ 8 KB；超出只降级为 index 视图，不塞全文"
+}
