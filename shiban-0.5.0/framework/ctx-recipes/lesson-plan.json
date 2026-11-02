@@ -1,0 +1,58 @@
+{
+  "atom": "lesson-plan",
+  "purpose": "让教案原子拿到'恰好够用'的输入：依据有出处、学情有数据、上节有遗留、教师有偏好。",
+  "inputs": {
+    "corpus": {
+      "why": "课标与教材原文，引用必须可复现",
+      "give": "search 命中的页片段（含 corpus_id / book_page / snippet）",
+      "limit": 8,
+      "if_empty": "degrade: 未导入语料，citations 留空，不得编页码"
+    },
+    "profile": {
+      "why": "决定支架选择与难度推荐",
+      "give": "支架类型 × 通过率（≥3 次记录才给趋势）",
+      "if_empty": "degrade: 无画像依据，不做优先级推荐"
+    },
+    "carry_over": {
+      "why": "上节课的建议与待办不能丢",
+      "give": "上次 mev 的 scaffold_candidates（未采纳）+ 上次 ev 的 priority_order（未关闭）",
+      "if_empty": "正常，首次备课"
+    },
+    "assets": {
+      "why": "先查后建，避免重复造教具",
+      "give": "按知识点命中的原子/页面摘要"
+    },
+    "preferences": {
+      "why": "去选项化 / 篇幅上限等",
+      "give": "已确认的 pref 列表"
+    },
+    "recipe": {
+      "why": "模板槽位与填写提示",
+      "give": "framework/lesson-template/template-v1.md 的槽位清单"
+    }
+  },
+  "question_budget": {
+    "pending_threshold": 5,
+    "max_per_round": 3,
+    "min_rounds": 3,
+    "max_rounds": 5,
+    "must_answer": [
+      "核心问题",
+      "学情卡点",
+      "支架判据"
+    ],
+    "ask_always": [
+      "S3/关键环节时长",
+      "要不要引入额外假说或案例"
+    ]
+  },
+  "theory": {
+    "digests": [
+      "pck-zpd.md",
+      "standards-map.md"
+    ],
+    "read_with": "shiban-store theory explain --file <name>",
+    "cite_with": "shiban-store theory cite --id <T-BUILTIN-nnn> --page <N> --quote '<≤40字>'",
+    "rule": "断言理论依据必须带页码；标〔推断〕的不是文献结论"
+  }
+}

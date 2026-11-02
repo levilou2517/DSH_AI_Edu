@@ -1,0 +1,51 @@
+{
+  "atom": "class-eval",
+  "purpose": "先把证据落盘再分析；双线并列，不替教师裁决。",
+  "inputs": {
+    "evidence": {
+      "why": "L0 原始材料是唯一事实源",
+      "give": "evidence list 的索引 + 命中条目的前 2000 字预览",
+      "rule": "先 evidence list；已有则不要求教师重复粘贴"
+    },
+    "lesson": {
+      "why": "对照设计意图找执行偏差",
+      "give": "S8 各环节 name/minutes/intent"
+    },
+    "quiz": {
+      "why": "归因到具体题目",
+      "give": "Q 编号、绑定支架、attribution"
+    },
+    "preferences": {
+      "why": "报告篇幅",
+      "give": "已确认偏好"
+    }
+  },
+  "mode_split": {
+    "classroom": "有学生作答或师生记录 → 可做分层与达成度",
+    "microteaching": "无学生 → 只做内省，禁止推断学生达成度"
+  },
+  "must_output": [
+    "model_view",
+    "teacher_view",
+    "divergence"
+  ],
+  "question_budget": {
+    "pending_threshold": 5,
+    "max_per_round": 3,
+    "min_rounds": 1,
+    "max_rounds": 3,
+    "must_answer": [
+      "学生是否真实作答",
+      "教师自评的关键时刻"
+    ]
+  },
+  "theory": {
+    "digests": [
+      "evidence-levels.md",
+      "standards-map.md"
+    ],
+    "read_with": "shiban-store theory explain --file <name>",
+    "cite_with": "shiban-store theory cite --id <T-BUILTIN-nnn> --page <N> --quote '<≤40字>'",
+    "rule": "断言理论依据必须带页码；标〔推断〕的不是文献结论"
+  }
+}

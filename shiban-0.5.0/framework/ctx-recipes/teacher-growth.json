@@ -1,0 +1,42 @@
+{
+  "atom": "teacher-growth",
+  "purpose": "跨多次证据合成趋势，每次只给一个可练点。",
+  "inputs": {
+    "history": {
+      "why": "趋势需要可比证据",
+      "give": "ev/mev index + 关键结论摘要"
+    },
+    "preferences": {
+      "why": "教师对反馈方式的偏好",
+      "give": "已确认偏好"
+    }
+  },
+  "rules": [
+    "≥2 次可比证据才描述趋势",
+    "每次只给 1 个优先练习点",
+    "不做人格判断",
+    "教师可 confirm/revise"
+  ],
+  "question_budget": {
+    "pending_threshold": 5,
+    "max_per_round": 3,
+    "min_rounds": 1,
+    "max_rounds": 2,
+    "must_answer": [
+      "回顾范围",
+      "最关心的成长问题"
+    ]
+  },
+  "trend_threshold": {
+    "min_records": 2,
+    "reason": "成长分析看的是单维行为的跨次变化，两次可比证据即可描述方向；三次以上再谈稳定"
+  },
+  "theory": {
+    "digests": [
+      "evidence-levels.md"
+    ],
+    "read_with": "shiban-store theory explain --file <name>",
+    "cite_with": "shiban-store theory cite --id <T-BUILTIN-nnn> --page <N> --quote '<≤40字>'",
+    "rule": "断言理论依据必须带页码；标〔推断〕的不是文献结论"
+  }
+}

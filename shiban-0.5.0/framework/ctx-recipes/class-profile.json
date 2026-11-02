@@ -1,0 +1,38 @@
+{
+  "atom": "class-profile",
+  "purpose": "回答'这个班怎么样'，并在无数据时如实说没有。",
+  "inputs": {
+    "history": {
+      "why": "画像由历史评价派生",
+      "give": "ev/mev 的 index 视图"
+    },
+    "graph": {
+      "why": "支架与知识点的关联",
+      "give": "graph 聚合：by_kind / by_status"
+    }
+  },
+  "rules": [
+    "≥3 次记录才谈趋势",
+    "无数据即声明'画像库未建立'",
+    "不编造学生数据"
+  ],
+  "question_budget": {
+    "pending_threshold": 5,
+    "max_per_round": 3,
+    "min_rounds": 0,
+    "max_rounds": 1,
+    "must_answer": []
+  },
+  "trend_threshold": {
+    "min_records": 3,
+    "reason": "班级画像是跨多次课堂的聚合均值，样本太少时均值不稳定"
+  },
+  "theory": {
+    "digests": [
+      "evidence-levels.md"
+    ],
+    "read_with": "shiban-store theory explain --file <name>",
+    "cite_with": "shiban-store theory cite --id <T-BUILTIN-nnn> --page <N> --quote '<≤40字>'",
+    "rule": "断言理论依据必须带页码；标〔推断〕的不是文献结论"
+  }
+}
