@@ -16,7 +16,7 @@ shiban-store migrate run --yes        # 仅当你要继承旧版本的素材时
 | 包名 | 稳定名 + semver 版本 | `@levilou/dsh-shiban` |
 | 预设 id | `ShiBan_V<X>_<Y>_<Z>`（带版本，避免新旧冲突） | `ShiBan_V0_5_0` |
 | 预设显示名 | `师伴 v<X.Y.Z>` | 师伴 v0.5.0 |
-| 数据根 | `$SHIBAN_ROOT/versions/v<X_Y_Z>/` | `~/.shiban/versions/v0_5_0/` |
+| 数据根 | `<工作区>/.shiban/` | 随工作区 |
 
 **为什么这样设计**
 
@@ -226,7 +226,60 @@ dsh --profile web --dump-config | grep -c bundledSkillDir # =1
 
 ---
 
-## 六、迁移旧版本的素材
+## 六、第一次用某个工作区
+
+数据全部落在 **`<工作区>/.shiban/`** —— 不出工作区，受 DSH 沙箱保护，随工作区一起走。
+
+首次使用时，师伴**不会擅自导入任何东西**，而是先扫描再征求同意：
+
+```bash
+shiban-store bootstrap status    # 是否已初始化
+shiban-store bootstrap scan      # 只读：列出工作区内的候选材料
+shiban-store bootstrap run --accept textbook,standard,paper
+shiban-store bootstrap run --accept none     # 只建数据根，不导入
+```
+
+### 识别哪些材料
+
+| 类别 | 判定依据 | 去向 |
+|---|---|---|
+| `textbook` | 文件名含「必修/教科书/教材/课本」，或目录名含「教材」 | 语料 |
+| `standard` | 文件名含「课程标准/考试大纲/专业标准」等，或目录名含「标准」 | 语料 |
+| `paper` | 目录名含「文献/论文/研究」，或文件名含「研究/综述」 | 语料 |
+| `lesson` | 文件名含「教案/教学设计」 | 仅登记，不入语料 |
+| `asset` | `.html/.htm` | 素材库 |
+
+**自动跳过**：`.git` / `node_modules` / `.venv` / `dist` / `build`、插件自身目录、
+证据与个人数据（`raw` / `evidence` / `triage` / `logs`）、README/INDEX 之类说明文件。
+
+**去重**：同一份材料的 PDF 与 MD 只导 PDF，MD 记为同源。
+
+### 自定义识别规则
+
+在工作区放 `.shiban/bootstrap.json`：
+
+```json
+{
+  "policy": {
+    "exclude_dirs": ["我的私有资料"],
+    "kinds": {
+      "textbook": { "names": ["沪教版", "浙科版"] }
+    }
+  }
+}
+```
+
+写死路径会伤害通用性，所以所有识别规则都在这个策略文件里，不依赖任何本机目录名。
+
+### 为什么必须先问
+
+扫描到 133 MB 教材就自动复制进工作区，是越权行为；工作区里也可能有不该入库的东西
+（学生作业、个人笔记）。所以 `bootstrap run` **必须带 `--accept`**，
+否则以 `need_consent` 拒绝执行，且**不创建任何目录**。
+
+---
+
+## 七、迁移旧版本的素材
 
 **只迁移 v0.5.0 及以后版本**积累的素材。v0.4.x 及更早的材料**不迁**——
 这是有意为之：数据模型不同，强行迁移只会带来脏数据。
@@ -267,7 +320,7 @@ shiban-store migrate run --from /path/to/某个旧目录      # 干跑
 > **开发阶段不迁移。** 只有部署到真实环境、且你显式运行 `migrate` 时才会动数据。
 > 开发时数据根永远是空的。
 
-## 七、数据在哪、怎么带走
+## 八、数据在哪、怎么带走
 
 ```
 $SHIBAN_ROOT/                默认 ~/.shiban（本系列根）
@@ -300,7 +353,7 @@ $SHIBAN_ROOT/                默认 ~/.shiban（本系列根）
 
 ---
 
-## 八、卸载
+## 九、卸载
 
 ```bash
 dsh plugin --profile web remove @levilou/dsh-shiban
@@ -310,7 +363,7 @@ dsh plugin --profile web remove @levilou/dsh-shiban
 
 ---
 
-## 九、不想动现有 profile？
+## 十、不想动现有 profile？
 
 用独立 profile 试，不影响日常使用：
 

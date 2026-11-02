@@ -680,6 +680,41 @@ def cmd_info(args) -> dict:
 
 
 
+def cmd_bootstrap(args) -> dict:
+    """工作区首次准备：scan（只读）→ 征得同意 → run（才动手）。"""
+    import shiban_bootstrap as boot
+    action = args.action
+    if action == "status":
+        return boot.status()
+    if action == "scan":
+        return boot.scan()
+    if action == "plan":
+        kinds = [k.strip() for k in args.accept.split(",")] if args.accept else None
+        return boot.plan(kinds)
+    if action == "run":
+        if not args.accept:
+            raise ShibanError("need_consent",
+                              "缺少 --accept：必须先向教师说明将导入什么，得到同意后再执行",
+                              "先跑 bootstrap scan 展示结果，征得同意后 "
+                              "bootstrap run --accept textbook,standard")
+        kinds = [k.strip() for k in args.accept.split(",") if k.strip()]
+        if kinds == ["none"]:
+            layout = core.ensure_layout()
+            import shiban_bootstrap as b2
+            b2.state_path().write_text(
+                __import__("json").dumps({
+                    "schema": "shiban.bootstrap/1", "at": core._now(),
+                    "version": core.package_meta()["version"],
+                    "completed": True, "accepted_kinds": [],
+                    "note": "教师选择暂不导入"}, ensure_ascii=False, indent=2) + "\n",
+                encoding="utf-8")
+            return {"ok": True, "root": layout["root"], "imported": {},
+                    "note": "已创建数据根，未导入任何材料"}
+        return boot.run(kinds)
+    raise ShibanError("bad_args", f"未知 bootstrap 子命令：{action}")
+
+
+
 def cmd_evidence(args) -> dict:
     if args.action == "save":
         if args.file:
@@ -795,6 +830,14 @@ def build_parser(argv_in=None) -> argparse.ArgumentParser:
     p.add_argument("--style", default="template", choices=["template", "competition"])
     p.add_argument("--out-dir"); p.add_argument("--formats", default="md,html,pdf")
     l.set_defaults(fn=cmd_lesson)
+
+    bo = sub.add_parser("bootstrap", help="工作区首次准备（先扫描，征得同意再导入）")
+    bsp = bo.add_subparsers(dest="action", required=True)
+    bsp.add_parser("status")
+    bsp.add_parser("scan")
+    p = bsp.add_parser("plan"); p.add_argument("--accept")
+    p = bsp.add_parser("run"); p.add_argument("--accept")
+    bo.set_defaults(fn=cmd_bootstrap)
 
     mi = sub.add_parser("info", help="安装位置与数据根")
     mi.set_defaults(fn=cmd_info)

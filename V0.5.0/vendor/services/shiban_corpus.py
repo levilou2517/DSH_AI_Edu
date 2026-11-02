@@ -151,12 +151,19 @@ def _err(code, message, hint=""):
 # 基础工具：路径 / 原子写 / JSON / 哈希
 # ---------------------------------------------------------------------------
 def _shiban_root() -> str:
-    root = os.environ.get("SHIBAN_ROOT") or "~/.shiban"
-    return os.path.abspath(os.path.expanduser(root))
+    """数据根必须与 shiban_core.root() 一致（默认在工作区内）。
+    不要在这里另起一套解析——两份解析器不一致，就会出现
+    「CLI 以为写 A、语料模块以为写 B」的错位。"""
+    try:
+        import shiban_core as _core
+        return _core.root()
+    except Exception:  # noqa: BLE001 —— 独立运行时的兜底
+        root = os.environ.get("SHIBAN_DATA_DIR") or os.environ.get("SHIBAN_ROOT") or "~/.shiban"
+        return os.path.abspath(os.path.expanduser(root))
 
 
 def corpus_root() -> str:
-    """返回 ``$SHIBAN_ROOT/corpus``（绝对路径，不创建）。"""
+    """返回 ``<数据根>/corpus``（绝对路径，不创建）。"""
     return os.path.join(_shiban_root(), "corpus")
 
 

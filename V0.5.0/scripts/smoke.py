@@ -32,9 +32,20 @@ def main():
     results, failed = [], 0
 
     steps = [("init", [sys.executable, str(CLI), "init"]),
-             ("doctor", [sys.executable, str(CLI), "doctor"])]
+             ("doctor", [sys.executable, str(CLI), "doctor"]),
+             ("bootstrap-status", [sys.executable, str(CLI), "bootstrap", "status"]),
+             ("bootstrap-scan", [sys.executable, str(CLI), "bootstrap", "scan"]),
+             ("bootstrap-gate", [sys.executable, str(CLI), "bootstrap", "run"])]
+    # 期望失败的步骤：非零退出 + 明确的错误码才算通过
+    EXPECT_FAIL = {"bootstrap-gate": "need_consent"}
     for name, cmd in steps:
-        r = run(cmd, root); r["step"] = name; results.append(r)
+        r = run(cmd, root); r["step"] = name
+        want = EXPECT_FAIL.get(name)
+        if want:
+            ok = (not r["ok"]) and want in (r.get("err") or "")
+            r["ok"] = ok
+            r["expect"] = f"非零退出且含 {want}"
+        results.append(r)
         failed += 0 if r["ok"] else 1
 
     # Python 3.9 兼容性（静态检查，不执行代码）

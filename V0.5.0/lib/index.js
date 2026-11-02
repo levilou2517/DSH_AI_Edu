@@ -43,19 +43,33 @@ function pkgMeta() {
 const PKG = pkgMeta();
 const VERSION_SLUG = 'v' + String(PKG.version || '0.0.0').replace(/[^0-9]/g, '_');
 
-/** 本系列根：$SHIBAN_ROOT 优先，否则 ~/.shiban。 */
+/** 当前工作区根：有 .git 的最近祖先，否则 cwd。与 Python 侧 workspace_root() 一致。 */
+function workspaceRoot() {
+  let cur = process.cwd();
+  for (;;) {
+    if (existsSync(join(cur, '.git'))) return cur;
+    const parent = dirname(cur);
+    if (parent === cur) return process.cwd();
+    cur = parent;
+  }
+}
+
+/** 本系列根（仅当显式设置 SHIBAN_ROOT 时使用，跨工作区共享）。 */
 function shibanLegacyRoot() {
   const raw = process.env.SHIBAN_ROOT || join(homedir(), '.shiban');
   return resolve(raw.replace(/^~(?=$|\/|\\)/, homedir()));
 }
 
-/** 本版本数据根：<legacy>/versions/<vX_Y_Z>。与 Python 侧 shiban_core.root() 一致。
- *  按版本隔离使升级/回退互不破坏；积累的素材用 `shiban-store migrate` 显式继承。 */
+/** 本版本数据根。默认在工作区内：<工作区>/.shiban
+ *  工作区外写入会被 DSH 沙箱拒绝，因此默认不出边界。 */
 function shibanRoot() {
   if (process.env.SHIBAN_DATA_DIR) {
     return resolve(process.env.SHIBAN_DATA_DIR.replace(/^~(?=$|\/|\\)/, homedir()));
   }
-  return join(shibanLegacyRoot(), 'versions', VERSION_SLUG);
+  if (process.env.SHIBAN_ROOT) {
+    return join(shibanLegacyRoot(), 'versions', VERSION_SLUG);
+  }
+  return join(workspaceRoot(), '.shiban');
 }
 
 /** 找到 Python 解释器：$SHIBAN_PY > python3 > python。 */
@@ -129,7 +143,9 @@ export function apply(ctx) {
   const root = shibanRoot();
   try {
     // 目录骨架先建，保证 Python 侧与日志都能落盘
-    for (const sub of ['data', 'data/artifacts', 'data/evidence', 'data/logs', 'corpus']) {
+    // 目录骨架：一次性建全，避免 Agent 首次写入时再去创建（沙箱下会失败）
+    for (const sub of ['data', 'data/artifacts', 'data/evidence', 'data/logs',
+                       'data/indexes', 'data/ask', 'data/assets', 'corpus', 'theory/derived']) {
       mkdirSync(join(root, sub), { recursive: true });
     }
   } catch (err) {
@@ -165,4 +181,4 @@ export function apply(ctx) {
     .catch((err) => logLine(root, `runtime error: ${err?.message || err}`));
 }
 
-export { shibanRoot, shibanLegacyRoot, cliPath, PKG as packageMeta };
+export { shibanRoot, shibanLegacyRoot, workspaceRoot, cliPath, PKG as packageMeta };

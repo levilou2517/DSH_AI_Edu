@@ -201,17 +201,44 @@ def legacy_root() -> str:
     return os.path.abspath(os.path.expanduser(raw))
 
 
-def root() -> str:
-    """本版本的数据根：``<legacy_root>/<version_slug>``。
+WORKSPACE_MARKER = ".shiban"
 
-    按版本隔离的理由：升级/回退时互不破坏；两个版本可并存做对照。
-    积累的素材通过 ``ensure_layout()`` 的自动迁移继承，不会因为换版本丢失。
-    显式设置 ``SHIBAN_DATA_DIR`` 可完全接管（测试与多实例用）。
+# 解析顺序（越靠前优先级越高）：
+#   1. SHIBAN_DATA_DIR        显式指定，完全接管（测试/多实例）
+#   2. <工作区>/.shiban/versions/<vX_Y_Z>/   默认：一切限制在工作区内，受 DSH 沙箱保护
+#   3. <SHIBAN_ROOT>/versions/<vX_Y_Z>/      仅有显式 SHIBAN_ROOT 时（跨工作区共享）
+#
+# 为什么默认在工作区内：DSH 的文件沙箱是 workspace-write，工作区外的写入会被拒。
+# 把数据放在 ~/.shiban 会让 Agent 的每次落盘都失败（v0.5.0 首次实测即如此）。
+
+
+def workspace_root() -> str | None:
+    """当前工作区根：有 .git 的最近祖先，否则 cwd。"""
+    cur = os.path.abspath(os.getcwd())
+    probe = cur
+    while True:
+        if os.path.isdir(os.path.join(probe, ".git")):
+            return probe
+        parent = os.path.dirname(probe)
+        if parent == probe:
+            return cur
+        probe = parent
+
+
+def root() -> str:
+    """本版本的数据根。
+
+    默认落在 ``<工作区>/.shiban/``——一切在工作区内，受 DSH 沙箱保护，
+    Agent 可自由落盘，数据随工作区一起走。工作区本身即隔离边界，
+    因此不再在其下再套一层版本目录；版本记录在 ``.shiban/VERSION``。
+    显式 ``SHIBAN_ROOT`` 时才用工作区外的共享根（需自行确保可写）。
     """
     override = os.environ.get("SHIBAN_DATA_DIR")
     if override:
         return os.path.abspath(os.path.expanduser(override))
-    return os.path.join(legacy_root(), "versions", version_slug())
+    if os.environ.get("SHIBAN_ROOT"):
+        return os.path.join(legacy_root(), "versions", version_slug())
+    return os.path.join(workspace_root(), WORKSPACE_MARKER)
 
 
 def _layout() -> dict:

@@ -2,6 +2,24 @@
 
 ## v0.5.0 — 空壳版
 
+### 数据根迁入工作区 + 首次使用需授权
+
+**问题**：首次真实会话显示，数据根 `~/.shiban` 在工作区外，被 DSH 沙箱拦截——
+`ask log`、`artifact put` 全部 `PermissionError`，提问与产物都没落盘。
+
+**改动**
+
+- 数据根默认改为 **`<工作区>/.shiban/`**：不出工作区，受沙箱保护，随工作区走。
+  显式 `SHIBAN_ROOT` / `SHIBAN_DATA_DIR` 仍可覆盖。
+- 新增 `shiban-store bootstrap`：`status` / `scan`（只读）/ `plan` / `run --accept`。
+  **扫描不创建任何东西；无 `--accept` 直接 `need_consent` 拒绝。**
+- 识别规则全部可在 `.shiban/bootstrap.json` 覆盖，不写死本机路径。
+- 语料层不再自行解析 `SHIBAN_ROOT`，统一走 `shiban_core.root()`
+  （此前两套解析器不一致，导致写错位置）。
+- 运行时插件挂载时一次性建全所有子目录（`data/ask`、`data/indexes` 等），
+  避免 Agent 首次写入时创建失败。
+
+
 ### 发布准备
 
 - **包名定为 `@levilou/dsh-shiban`**，发布到 npm（`private: false`、`publishConfig.access: public`、`license: MIT`）。
