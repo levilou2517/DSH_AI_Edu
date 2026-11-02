@@ -41,10 +41,8 @@ VERSION_FILE = HERE.parent.parent / "VERSION"
 
 
 def _version() -> str:
-    try:
-        return VERSION_FILE.read_text(encoding="utf-8").strip()
-    except OSError:
-        return core.constants().get("version", "0.0.0")
+    """版本唯一真源是 package.json；VERSION 文件为便于人读的镜像。"""
+    return core.package_meta()["version"]
 
 
 def _load_json_arg(value: str | None, flag: str) -> dict:
@@ -295,7 +293,10 @@ def cmd_doctor(args) -> dict:
 
 
 def cmd_version(args) -> dict:
-    return {"name": "@local/dsh-shiban", "version": _version(), "root": core.root()}
+    meta = core.package_meta()
+    presets = meta.get("shiban") or {}
+    return {"name": meta["name"], "version": meta["version"],
+            "preset_id": presets.get("presetId"), "root": core.root()}
 
 
 def cmd_artifact(args) -> dict:
