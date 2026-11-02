@@ -38,7 +38,19 @@ dsh plugin --profile web add ./shiban-0.5.0.tgz
 |---|---|
 | DSH | ≥ 0.2.0-rc.2 |
 | Node | ≥ 20 |
-| Python | ≥ 3.9（依赖已随包携带，无需 pip install） |
+| **Python** | **≥ 3.9（必需）** |
+
+### 关于 Python 依赖
+
+师伴的数据层是 Python 写的，**你的机器上必须有 Python 3.9 或更新版本**。
+
+- 不需要 `pip install` 任何东西——用到的标准库已经随包携带了纯 Python 源码；
+- 但 **C 扩展（如 `sqlite3` 的 `_sqlite3`）来自宿主解释器**，所以解释器本身必须存在；
+- 已在 Linux 上验证；Windows / macOS 需自备 Python。
+
+`vendor/python/lib` 里是 **221 个纯 `.py` 文件**（0 个 `.pyc`、0 个二进制），
+不绑定任何操作系统或 Python 小版本。发布前会用 `tools/check-py39.py` 做静态校验，
+确保没有 3.10+ 才有的语法。
 
 可选：`pdftotext`（导入 PDF 教材）、Chrome/Chromium（导出 PDF 教案）。
 缺了会降级，不会失败。

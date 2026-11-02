@@ -47,10 +47,12 @@ shiban-store info
 |---|---|---|
 | DSH | ≥ 0.2.0-rc.2 | 旧版用 `.agent-presets` 目录，不兼容 |
 | Node | ≥ 20 | 插件的运行时装配用 |
-| Python | ≥ 3.9（推荐 3.10+） | 找不到会明确报错并给提示 |
+| **Python** | **≥ 3.9（硬性依赖）** | 找不到会明确报错并给提示，见下方排查 |
 | pnpm | 10.x | `dsh plugin` 内部调用 |
 
-**不需要额外 pip 安装**：CLI 只用标准库，且已随包携带依赖闭包（`vendor/python/lib`，3.2 MB）。
+**不需要额外 pip 安装**：CLI 只用标准库，且已随包携带纯 Python 源码闭包（`vendor/python/lib`，约 3.9 MB，221 个 `.py`，无 `.pyc`、无二进制）。
+
+**但解释器本身必须有**：`sqlite3` 等 C 扩展来自宿主 Python。这是硬依赖，不是可选项。
 
 可选工具（缺了会降级，不会失败）：
 
@@ -161,6 +163,20 @@ dsh --profile web --dump-config | grep -A8 bundledSkillDir
 
 输出里应能看到指向 `<安装路径>/skills`。若确实解析了但技能仍缺席，
 检查 `skills/*.md` 的 frontmatter（`name` 必填、必须 kebab-case）。
+
+### CLI 报「找不到 Python 3」或导入时报语法错误
+
+师伴需要 **Python 3.9+**。先确认版本：
+
+```bash
+python3 --version    # 需要 3.9 或更新
+```
+
+若是 3.9 以下，会因代码中的类型注解语法报 `SyntaxError`。升级 Python，或指定一个 3.9+ 的解释器：
+
+```bash
+export SHIBAN_PY=/usr/bin/python3.11
+```
 
 ### CLI 报「找不到 Python 3」
 

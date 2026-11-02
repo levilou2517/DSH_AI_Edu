@@ -37,6 +37,14 @@ def main():
         r = run(cmd, root); r["step"] = name; results.append(r)
         failed += 0 if r["ok"] else 1
 
+    # Python 3.9 兼容性（静态检查，不执行代码）
+    chk = ROOT / "tools" / "check-py39.py"
+    if chk.exists():
+        r = run([sys.executable, str(chk)], root)
+        r["step"] = "check-py39"
+        results.append(r)
+        failed += 0 if r["ok"] else 1
+
     for mod in MODULES:
         f = SV / f"{mod}.py"
         if not f.exists():

@@ -17,8 +17,9 @@
   "files": [
     "lib/",
     "vendor/bin/",
-    "vendor/services/",
-    "vendor/python/",
+    "vendor/services/*.py",
+    "vendor/python/**/*.py",
+    "vendor/python/MANIFEST.json",
     "skills/",
     "framework/",
     "contracts/",
@@ -55,5 +56,9 @@
   "homepage": "https://github.com/levilou2517/shiban-dist#readme",
   "publishConfig": {
     "access": "public"
+  },
+  "scripts": {
+    "prepack": "node -e \"const{execSync}=require('child_process');try{execSync('find vendor -name __pycache__ -type d -prune -exec rm -rf {} + 2>/dev/null || true',{stdio:'ignore'})}catch(e){}\"",
+    "clean": "find vendor -name __pycache__ -type d -prune -exec rm -rf {} + 2>/dev/null || true"
   }
 }

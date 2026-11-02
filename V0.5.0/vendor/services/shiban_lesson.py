@@ -27,6 +27,8 @@ thead 跨页、中文字族分流、列宽类），但**不依赖 Mermaid 运行
     python3 shiban_lesson.py validate lesson.json [--strict]
 """
 
+from __future__ import annotations
+
 import copy
 import html
 import json
