@@ -10,14 +10,16 @@
 #   3. 系统 python3 / python（并逐个试跑 -c '' 验活）
 #   4. DSH 自带运行时（Windows: ~/.dsh/dsh-runtimes/*/dependencies/python/python.exe）
 #
-# 依赖隔离：优先把 vendor/python/lib 放到 PYTHONPATH 最前，使 CLI 只依赖随包
-# 分发的标准库闭包，不受宿主 Python 版本与已装包影响。
+# 版本要求：Python >= 3.10（见 package.json 的 shiban.requires）。
+# 不随包分发标准库：sqlite3/hashlib/bz2 等是 C 扩展，只能来自宿主解释器；
+# 随包副本会覆盖宿主的同名模块，反而造成版本错配。
 set -euo pipefail
 
 SELF_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 PKG_DIR="$(cd "$SELF_DIR/../.." && pwd)"
 CLI="$PKG_DIR/vendor/services/shiban_cli.py"
-VENDOR_LIB="$PKG_DIR/vendor/python/lib"
+MIN_MAJOR=3
+MIN_MINOR=10
 
 die() { printf '[error] %s\n' "$*" >&2; exit 2; }
 
@@ -48,9 +50,14 @@ fi
 
 [ -f "$CLI" ] || die "缺少 CLI：$CLI（包可能未完整解压）"
 
-if [ -d "$VENDOR_LIB" ]; then
-  export PYTHONPATH="$VENDOR_LIB${PYTHONPATH:+:$PYTHONPATH}"
+# 版本门槛：明确报错，而不是让用户在导入时报 SyntaxError
+PYVER="$("$PY" -c 'import sys;print("%d.%d"%sys.version_info[:2])' 2>/dev/null || echo "0.0")"
+PYMAJ="${PYVER%%.*}"; PYMIN="${PYVER##*.}"
+if [ "$PYMAJ" -lt "$MIN_MAJOR" ] || { [ "$PYMAJ" -eq "$MIN_MAJOR" ] && [ "$PYMIN" -lt "$MIN_MINOR" ]; }; then
+  die "需要 Python >= ${MIN_MAJOR}.${MIN_MINOR}，当前为 ${PYVER}（$PY）。
+       升级 Python，或设置 SHIBAN_PY 指向 3.10+ 的解释器。"
 fi
+
 export PYTHONUTF8=1
 export PYTHONIOENCODING=utf-8
 

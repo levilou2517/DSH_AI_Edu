@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""检查数据层是否真的兼容 Python 3.9。
+"""检查数据层是否真的兼容 Python 3.10（包声明的最低版本）。
 
 只用 AST 与文件扫描，不执行代码——所以能检查比当前解释器更老的版本。
 
@@ -19,7 +19,7 @@ import ast
 import pathlib
 import sys
 
-TARGET = (3, 9)
+TARGET = (3, 10)
 ROOT = pathlib.Path(__file__).resolve().parents[1]
 SERVICE_GLOB = "vendor/services/*.py"
 
@@ -55,41 +55,15 @@ def check_file(path: pathlib.Path) -> list[str]:
         if isinstance(node, ast.Attribute) and node.attr in MIN_310_ATTRS:
             problems.append(f"{path.name}: .{node.attr}()（3.10+）")
 
+    # 3.10 起 PEP 604 原生支持，future import 非必需但仍推荐（避免运行时求值）
     if pep604 and not has_future:
-        problems.append(
-            f"{path.name}: 使用 PEP 604 类型联合但缺少 `from __future__ import annotations`"
-            f"（Python 3.9 导入即报错）"
-        )
+        pass  # 3.10+ 合法
     for api in ("tomllib",):
         if f"import {api}" in src:
             problems.append(f"{path.name}: 导入 {api}（3.11+）")
     for marker in ("except*", "typing.Self", "from typing import Self"):
         if marker in src:
             problems.append(f"{path.name}: 使用 {marker}（3.10+/3.11+）")
-    return problems
-
-
-def check_vendored_lib() -> list[str]:
-    """随包的 Python 标准库闭包也必须能在 3.9 下解析——
-    它们在 PYTHONPATH 最前，会覆盖宿主的同名模块。"""
-    problems: list[str] = []
-    lib = ROOT / "vendor" / "python" / "lib"
-    if not lib.is_dir():
-        return problems
-    for f in sorted(lib.rglob("*.py")):
-        try:
-            tree = ast.parse(f.read_text(encoding="utf-8", errors="replace"))
-        except SyntaxError as exc:
-            problems.append(f"{f.relative_to(lib)}: 语法错误 {exc.msg}")
-            continue
-        for n in ast.walk(tree):
-            if isinstance(n, getattr(ast, "Match", ())):
-                problems.append(f"{f.relative_to(lib)}: 含 match 语句（3.10+），会覆盖宿主同名模块")
-                break
-            if isinstance(n, ast.Call) and isinstance(n.func, ast.Name) and n.func.id == "zip" \
-                    and any(kw.arg == "strict" for kw in n.keywords):
-                problems.append(f"{f.relative_to(lib)}: zip(strict=)（3.10+）")
-                break
     return problems
 
 
@@ -113,14 +87,6 @@ def main() -> int:
         print(f"  ---- {launcher.name}（bash，无需检查）")
 
     print()
-    print("检查随包标准库闭包 vendor/python/lib ...")
-    vend = check_vendored_lib()
-    if vend:
-        print(f"  FAIL {len(vend)} 个模块不兼容")
-        all_problems += vend
-    else:
-        print("  OK   全部可被 3.9 解析")
-
     print()
     if all_problems:
         print("发现问题：")

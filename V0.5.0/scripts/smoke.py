@@ -38,10 +38,10 @@ def main():
         failed += 0 if r["ok"] else 1
 
     # Python 3.9 兼容性（静态检查，不执行代码）
-    chk = ROOT / "tools" / "check-py39.py"
+    chk = ROOT / "tools" / "check-py310.py"
     if chk.exists():
         r = run([sys.executable, str(chk)], root)
-        r["step"] = "check-py39"
+        r["step"] = "check-py310"
         results.append(r)
         failed += 0 if r["ok"] else 1
 
