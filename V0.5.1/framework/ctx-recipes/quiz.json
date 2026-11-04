@@ -1,0 +1,47 @@
+{
+  "atom": "quiz",
+  "purpose": "题目必须能落到目标与支架上，并能从错误反推卡点。",
+  "inputs": {
+    "lesson": {
+      "why": "题目绑定目标与支架环节",
+      "give": "S4 目标 id 集合、S8 环节（编号/名称/时长/意图）",
+      "if_empty": "degrade: 无教案锚点，归因降级为考点-认知层次"
+    },
+    "history": {
+      "why": "上次哪题崩了决定这次加测什么",
+      "give": "上次 quiz 各题命中率"
+    },
+    "profile": {
+      "why": "薄弱知识点决定题型分布",
+      "give": "知识点 × 通过率"
+    },
+    "preferences": {
+      "why": "去选项化等",
+      "give": "已确认偏好"
+    }
+  },
+  "question_budget": {
+    "pending_threshold": 5,
+    "max_per_round": 3,
+    "min_rounds": 1,
+    "max_rounds": 3,
+    "must_answer": [
+      "诊断还是过关",
+      "预计大面积错的题",
+      "时长"
+    ]
+  },
+  "output_must": [
+    "每题 attribution",
+    "至少 1 题应用/分析层",
+    "coverage 覆盖率"
+  ],
+  "theory": {
+    "digests": [
+      "pck-zpd.md"
+    ],
+    "read_with": "shiban-store theory explain --file <name>",
+    "cite_with": "shiban-store theory cite --id <T-BUILTIN-nnn> --page <N> --quote '<≤40字>'",
+    "rule": "断言理论依据必须带页码；标〔推断〕的不是文献结论"
+  }
+}

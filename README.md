@@ -2,7 +2,8 @@
 
 面向**师范生与新手教师**的循证教学辅助 Agent 的开发主仓。
 
-> 当前开发版本：**v0.5.0**（空壳重构版），位于 [`V0.5.0/`](V0.5.0/)
+> 当前开发版本：**v0.5.1**（DSH 0.2.1-rc.5 兼容适配），位于 [`V0.5.1/`](V0.5.1/)
+> 上一版：**v0.5.0**（空壳重构版），位于 [`V0.5.0/`](V0.5.0/)
 > 发布仓（面向使用者）：`shiban-dist`
 > 旧版预设仓（已归档）：`dsh-shiban-presets`
 
@@ -18,7 +19,72 @@
 
 ---
 
-## 当前版本：v0.5.0
+## 当前版本：v0.5.1
+
+### 这一版更新了什么
+
+v0.5.1 是**兼容性适配**，不改教学逻辑：人格文本、六项技能契约、数据层与产物格式与 v0.5.0 一致。
+配套 **DSH 0.2.1-rc.5**。
+
+#### 1. 子 Agent 人格改为独立预设（必须改）
+
+DSH 0.2.1 拒绝 `tool-subagent.persona`，报
+`persona is no longer supported ... select it with agentPreset`。
+
+改为：独立预设 `ShiBan_Executor_V0_5_1` + 委派行 `agentPreset` 绑定。
+子 Agent 人格文本与 v0.5.0 **逐字一致**（仅 `{{cwd}}` → `{{workdir}}`），工具面刻意窄：
+有 `bash` / `fs` / `skill` / `todo`，**无** `subagent`（禁止再委派）、**无** `ask_user`
+（子 Agent 存活时调用会被 `DELEGATED_CALLER` 拒绝，问题走回执 `needs_teacher[]`）。
+
+#### 2. 删除 `backgroundMode`
+
+该字段在 0.2.1 的 schema 中已不存在。后台能力**没有消失**——`dsh-subagent` 运行时
+里有 58 处 `continuable`，区分 `one-shot` / `continuable` 两种描述符，只是从
+"插件配置"移到"运行时托管"。因此人格里并行委派的写法不需要改。
+
+#### 3. `{{cwd}}` 变量改为自注册 `workdir`
+
+DSH 的 system-prompt 只内置 `provider` / `model`。含 `{{cwd}}` 的人格会**每轮报错**
+`unknown prompt variable`。这与 0.2.1 无关——0.2.0-rc.2 的检查代码完全相同，
+属于**一直存在的隐患**，本版一并修掉。
+
+注册放在 **Host 层主入口**：`assemble()` 先合并 global 层变量再合并 scope 层，
+所以预设内的 persona 同样可见，预设里不需要再挂一行插件。
+
+> 曾用包内子路径 `@levilou/dsh-shiban/prompt-vars` 做这件事，实测失败：
+> Loader 用裸 specifier `import()`，解析基准取决于进程环境而非 profile，
+> 从非 profile 目录解析即 `ERR_MODULE_NOT_FOUND`，而 Loader 对此只
+> `catch { logger.error; return }` —— **fiber 从不创建**，审计报 `never started`。
+> 已彻底移除该子路径。
+
+#### 4. 修掉三个真 bug
+
+| bug | 现象 | 修法 |
+|---|---|---|
+| 数据根路径嵌套 | `<root>/versions/vX/versions/vX` | 改传 `SHIBAN_DATA_DIR`（语义为"就是这个目录"），不再传 `SHIBAN_ROOT` |
+| 解释器回落失效 | 第一个 Python 失败后不再试下一个 | `execFile` 异步，改为在回调里串行递归尝试 |
+| `.cmd` 缺版本门槛 | Windows 上要到运行期才报 SyntaxError | 补齐四段解析 + `Python >= 3.10` 明确报错 |
+
+#### 5. 多系统适配
+
+- **不写死任何绝对路径**：全部由 `import.meta.url` → `fileURLToPath` 推导，经 `node:path` 组装；
+- 实测放在含中文与空格的目录下仍能解析到 6 个技能；
+- 平台差异走 `!!js process.platform`：Windows 挂 `tool-pwsh`、其余挂 `tool-bash`。
+
+#### 已验证 / 未验证
+
+**已验证**（DSH 0.2.1-rc.5）：39 行配置过真实 schema 31 通过 0 失败；
+隔离 `DSH_HOME` 真实启动成功；`runtime.log` 记录 `workdir 变量已注册` / `init ok` /
+`doctor: 必需依赖齐全`；从成品 zip 解压后挂载正常；冒烟 10/10。
+
+**未验证**：Windows 实机（`.cmd` 与 `tool-pwsh` 仅静态补齐）；
+真实会话内的六原子委派闭环；`fork` 并发行为。
+
+详见 [V0.5.1/CHANGELOG.md](V0.5.1/CHANGELOG.md)。
+
+---
+
+## 上一版：v0.5.0
 
 ### 它是什么
 
@@ -36,8 +102,8 @@
 ### 目录
 
 ```
-V0.5.0/
-├── package.json          @local/dsh-shiban-v0-5-0
+V0.5.1/
+├── package.json          @levilou/dsh-shiban  v0.5.1
 ├── cordis.patch.yml      预设声明 + 运行时装配 + 工具行
 ├── lib/index.js          挂载时建数据根、跑 doctor
 ├── skills/               六项原子技能契约
@@ -49,29 +115,31 @@ V0.5.0/
 ├── contracts/            产物信封、回执、配方 schema
 ├── vendor/
 │   ├── services/         Python 数据层（零第三方依赖）
-│   ├── bin/              跨平台启动器
-│   └── python/lib/       自带标准库闭包
+│   └── bin/              跨平台启动器
 ├── docs/                 部署、架构、教案、导入、能力边界
 ├── scripts/              打包与冒烟
 └── tools/                理论库登记
 ```
 
+
 ### 快速开始（开发）
 
 ```bash
-cd V0.5.0
-python3 scripts/smoke.py               # 六模块冒烟
-bash scripts/build-package.sh          # 产出 dist/shiban-0.5.0.tgz
+cd V0.5.1
+python3 scripts/smoke.py               # 冒烟（10 步）
+bash scripts/build-package.sh          # 产出 dist/shiban-0.5.1.{tgz,zip}
 python3 vendor/services/shiban_lesson.py   # 单模块自检
 ```
 
 ### 安装到 DSH
 
+在 DSH Web 的**插件**页 → 添加插件 → 填入包目录的绝对路径 →
+
 ```bash
-dsh plugin --profile web add V0.5.0/dist/shiban-0.5.0.tgz
+dsh plugin --profile web add V0.5.1/dist/shiban-0.5.1.tgz
 ```
 
-详见 [V0.5.0/docs/DEPLOY.md](V0.5.0/docs/DEPLOY.md)。
+详见 [V0.5.1/docs/DEPLOY.md](V0.5.1/docs/DEPLOY.md)。
 
 ---
 

@@ -1,0 +1,538 @@
+{
+  "schema": "shiban.theory-citations/1",
+  "note": "仅登记文献元数据，不随包分发全文。正文留在维护者源库或教师 derived 区。",
+  "items": [
+    {
+      "id": "T-BUILTIN-001",
+      "source": "builtin",
+      "group": "literature",
+      "source_file": "文献/Lieberei_Dissertation.md",
+      "title": "Lieberei_Dissertation",
+      "pages": {
+        "count": 246,
+        "first": 1,
+        "last": 261
+      },
+      "sha256": "40f21dd519b8031ebdfbaf9a648ed377bcfad56b0d97c88d908b5143b5327398",
+      "full_text_shipped": false
+    },
+    {
+      "id": "T-BUILTIN-002",
+      "source": "builtin",
+      "group": "literature",
+      "source_file": "文献/Those_Who_Understand_Knowledge_Growth_in_Teaching.md",
+      "title": "Those_Who_Understand_Knowledge_Growth_in_Teaching",
+      "pages": {
+        "count": 11,
+        "first": 1,
+        "last": 11
+      },
+      "sha256": "05ba9a44bfa823312b9cac688af3db3534971da57375afbd4e462b72293cc4c8",
+      "full_text_shipped": false
+    },
+    {
+      "id": "T-BUILTIN-003",
+      "source": "builtin",
+      "group": "literature",
+      "source_file": "文献/Unpacking_PCK_Relationships_and_Development_in_Science_Teachers_A_Systematic_Synthesis_of_Empirical_Research.md",
+      "title": "Unpacking_PCK_Relationships_and_Development_in_Science_Teachers_A_Systematic_Synthesis_of_Empirical_Research",
+      "pages": {
+        "count": 39,
+        "first": 1,
+        "last": 39
+      },
+      "sha256": "5656644fdf97851aa93c9dfc6553c39aa12e27d96efd057ffa607b740694203b",
+      "full_text_shipped": false
+    },
+    {
+      "id": "T-BUILTIN-004",
+      "source": "builtin",
+      "group": "literature",
+      "source_file": "文献/“小花狮”作文智能辅导系统_郑蝉金.md",
+      "title": "“小花狮”作文智能辅导系统_郑蝉金",
+      "pages": {
+        "count": 4,
+        "first": 1,
+        "last": 4
+      },
+      "sha256": "5693ad909fc1608a2a7019181e229e2a5b89e93dad9da4871763e0b8350e32c1",
+      "full_text_shipped": false
+    },
+    {
+      "id": "T-BUILTIN-005",
+      "source": "builtin",
+      "group": "literature",
+      "source_file": "文献/人工智能背景下提升高中生物教学有效性的路径探索_张映娥.md",
+      "title": "人工智能背景下提升高中生物教学有效性的路径探索_张映娥",
+      "pages": {
+        "count": 4,
+        "first": 1,
+        "last": 4
+      },
+      "sha256": "561d5725b4f989ea273dbac10eacb9f09297f3f082ecda6d81a1dd81115051d3",
+      "full_text_shipped": false
+    },
+    {
+      "id": "T-BUILTIN-006",
+      "source": "builtin",
+      "group": "literature",
+      "source_file": "文献/人工智能赋能教学设计新范式_冯晓英.md",
+      "title": "人工智能赋能教学设计新范式_冯晓英",
+      "pages": {
+        "count": 11,
+        "first": 1,
+        "last": 11
+      },
+      "sha256": "6730e253851ae7633e68200a68fbd46eb76073b0b05b22f6d185e5e9f74c8546",
+      "full_text_shipped": false
+    },
+    {
+      "id": "T-BUILTIN-007",
+      "source": "builtin",
+      "group": "literature",
+      "source_file": "文献/人工智能赋能高中生物学科实验教学策略的创新与实践_陈建鹏.md",
+      "title": "人工智能赋能高中生物学科实验教学策略的创新与实践_陈建鹏",
+      "pages": {
+        "count": 3,
+        "first": 1,
+        "last": 3
+      },
+      "sha256": "005eb13d41659be5058e3598d3e6c36be453b63abafbe4c70de0ff40f8d62933",
+      "full_text_shipped": false
+    },
+    {
+      "id": "T-BUILTIN-008",
+      "source": "builtin",
+      "group": "literature",
+      "source_file": "文献/人工智能赋能高中生物教学创新的实践路径探究_刘晓飞.md",
+      "title": "人工智能赋能高中生物教学创新的实践路径探究_刘晓飞",
+      "pages": {
+        "count": 3,
+        "first": 1,
+        "last": 3
+      },
+      "sha256": "bbadb9b64ab155a8244f4d7c45be75b8d158433a8226a76c5087daa466890f75",
+      "full_text_shipped": false
+    },
+    {
+      "id": "T-BUILTIN-009",
+      "source": "builtin",
+      "group": "literature",
+      "source_file": "文献/从数据到证据_人工智能赋能循证教学的模型构建与实施路径_周险峰.md",
+      "title": "从数据到证据_人工智能赋能循证教学的模型构建与实施路径_周险峰",
+      "pages": {
+        "count": 8,
+        "first": 1,
+        "last": 8
+      },
+      "sha256": "ceb9c0f8732239824945aa305c7628daf6ae94dbbeb405e9664117ded6ba4902",
+      "full_text_shipped": false
+    },
+    {
+      "id": "T-BUILTIN-010",
+      "source": "builtin",
+      "group": "literature",
+      "source_file": "文献/从观察到洞察：基于多智能体的人机协同课堂循证教研系统构建_李玲.md",
+      "title": "从观察到洞察：基于多智能体的人机协同课堂循证教研系统构建_李玲",
+      "pages": {
+        "count": 10,
+        "first": 1,
+        "last": 10
+      },
+      "sha256": "249088a3fe96ce1441804b53e2f0ca31ef651457e1effe0b9d4a689b9431dfa5",
+      "full_text_shipped": false
+    },
+    {
+      "id": "T-BUILTIN-011",
+      "source": "builtin",
+      "group": "literature",
+      "source_file": "文献/基于人工智能技术的高中生物探究性实验教学实践路径研究_纪海鹏.md",
+      "title": "基于人工智能技术的高中生物探究性实验教学实践路径研究_纪海鹏",
+      "pages": {
+        "count": 4,
+        "first": 1,
+        "last": 4
+      },
+      "sha256": "87d178bb539fb987abdadc508a568fb628dedd0d8999950d9db947cc7a580564",
+      "full_text_shipped": false
+    },
+    {
+      "id": "T-BUILTIN-012",
+      "source": "builtin",
+      "group": "literature",
+      "source_file": "文献/基于生物学选考对高阶思维考查的循证教学实践探索——以2026年1月浙江生物学选考第24题为例_傅建利.md",
+      "title": "基于生物学选考对高阶思维考查的循证教学实践探索——以2026年1月浙江生物学选考第24题为例_傅建利",
+      "pages": {
+        "count": 6,
+        "first": 1,
+        "last": 6
+      },
+      "sha256": "de9f7748e663a1afb29af83f46910657947a9628a576f739e197e881c31ad094",
+      "full_text_shipped": false
+    },
+    {
+      "id": "T-BUILTIN-013",
+      "source": "builtin",
+      "group": "literature",
+      "source_file": "文献/多智能体协同支持的师范生智能教育素养培育研究——“IELES”设计与实践_张洁.md",
+      "title": "多智能体协同支持的师范生智能教育素养培育研究——“IELES”设计与实践_张洁",
+      "pages": {
+        "count": 9,
+        "first": 1,
+        "last": 9
+      },
+      "sha256": "5f59cf3cb0ce0ac35a0a3b715fcda2eca51a62e5163d253575d2be7d9a1d0042",
+      "full_text_shipped": false
+    },
+    {
+      "id": "T-BUILTIN-014",
+      "source": "builtin",
+      "group": "literature",
+      "source_file": "文献/大语言模型智能体的创新应用：数字化身教研_李海东.md",
+      "title": "大语言模型智能体的创新应用：数字化身教研_李海东",
+      "pages": {
+        "count": 12,
+        "first": 1,
+        "last": 12
+      },
+      "sha256": "358f097889aede526120689a2220905dbd8a40a6bc198b689bbdcc89e4dec183",
+      "full_text_shipped": false
+    },
+    {
+      "id": "T-BUILTIN-015",
+      "source": "builtin",
+      "group": "literature",
+      "source_file": "文献/循证·贯通·优化：基于“智能体循证链”的小学数学教学练测评一体化实践研究——以“分数的初步认识”一课为例_鲍茵茵.md",
+      "title": "循证·贯通·优化：基于“智能体循证链”的小学数学教学练测评一体化实践研究——以“分数的初步认识”一课为例_鲍茵茵",
+      "pages": {
+        "count": 3,
+        "first": 1,
+        "last": 3
+      },
+      "sha256": "647223a386ceb091e7d07a122cddab68c4aadd448ba7a4ffc0a9f5f908321179",
+      "full_text_shipped": false
+    },
+    {
+      "id": "T-BUILTIN-016",
+      "source": "builtin",
+      "group": "literature",
+      "source_file": "文献/有效学习活动的关键特征和设计策略——以“DNA双螺旋结构模型”为例_张春雷.md",
+      "title": "有效学习活动的关键特征和设计策略——以“DNA双螺旋结构模型”为例_张春雷",
+      "pages": {
+        "count": 5,
+        "first": 1,
+        "last": 5
+      },
+      "sha256": "79bfb2e2deeb2df3cf91206d7b72c1b01ae14676b2da908fa932f154150aeeb7",
+      "full_text_shipped": false
+    },
+    {
+      "id": "T-BUILTIN-017",
+      "source": "builtin",
+      "group": "literature",
+      "source_file": "文献/未来教师如何培养？——人机协同师范教育创新的理论模型与实践进路_余明华.md",
+      "title": "未来教师如何培养？——人机协同师范教育创新的理论模型与实践进路_余明华",
+      "pages": {
+        "count": 10,
+        "first": 1,
+        "last": 10
+      },
+      "sha256": "7348e3c856e46f247229f19f2f2f120a36591dc2bd35211df1addc11e04365d1",
+      "full_text_shipped": false
+    },
+    {
+      "id": "T-BUILTIN-018",
+      "source": "builtin",
+      "group": "literature",
+      "source_file": "文献/核心素养发展导向的一致性课堂结构设计——以“细胞的增殖”为例.md",
+      "title": "核心素养发展导向的一致性课堂结构设计——以“细胞的增殖”为例",
+      "pages": {
+        "count": 3,
+        "first": 1,
+        "last": 3
+      },
+      "sha256": "7e3758929ddd83e8dc6c4581a8b5bd917b00fa7258437cbecee04da2e4f3862c",
+      "full_text_shipped": false
+    },
+    {
+      "id": "T-BUILTIN-019",
+      "source": "builtin",
+      "group": "literature",
+      "source_file": "文献/核心素养视角下课堂结构的审视与重构_张春雷.md",
+      "title": "核心素养视角下课堂结构的审视与重构_张春雷",
+      "pages": {
+        "count": 6,
+        "first": 1,
+        "last": 6
+      },
+      "sha256": "068c4cd4cfdae1ac7df420434f09fe17e79eabc4086647e47086199ebadfec3c",
+      "full_text_shipped": false
+    },
+    {
+      "id": "T-BUILTIN-020",
+      "source": "builtin",
+      "group": "literature",
+      "source_file": "文献/理科教师PCK评价框架_越智拓也等.md",
+      "title": "理科教师PCK评价框架_越智拓也等",
+      "pages": {
+        "count": 2,
+        "first": 1,
+        "last": 2
+      },
+      "sha256": "60a7c483ecbc3d3f3cf68db6e57bf964bb834bce0e15a6ef8fea2283873fde63",
+      "full_text_shipped": false
+    },
+    {
+      "id": "T-BUILTIN-021",
+      "source": "builtin",
+      "group": "literature",
+      "source_file": "文献/生成式人工智能在高中信息技术教学中的应用_潘自力.md",
+      "title": "生成式人工智能在高中信息技术教学中的应用_潘自力",
+      "pages": {
+        "count": 3,
+        "first": 1,
+        "last": 3
+      },
+      "sha256": "584fc518e64bcc843de0dc3439ddfca91eb0652c5f58366aa73978435b8bf4d2",
+      "full_text_shipped": false
+    },
+    {
+      "id": "T-BUILTIN-022",
+      "source": "builtin",
+      "group": "literature",
+      "source_file": "文献/生成式人工智能在高中地理教学中的应用研究——以“石油资源与能源安全”为例_周珺.md",
+      "title": "生成式人工智能在高中地理教学中的应用研究——以“石油资源与能源安全”为例_周珺",
+      "pages": {
+        "count": 4,
+        "first": 1,
+        "last": 4
+      },
+      "sha256": "cb290b956a5b8088d5d5d6717681414913baf036e4de2a0d4e6abfead51a8efc",
+      "full_text_shipped": false
+    },
+    {
+      "id": "T-BUILTIN-023",
+      "source": "builtin",
+      "group": "literature",
+      "source_file": "文献/生物学核心素养的关键特征及其生成路径_张春雷.md",
+      "title": "生物学核心素养的关键特征及其生成路径_张春雷",
+      "pages": {
+        "count": 4,
+        "first": 1,
+        "last": 4
+      },
+      "sha256": "e2b1eef8fd1b66744c79b4c09ede2d03f5a875fc03be8188cafdeed58313acbc",
+      "full_text_shipped": false
+    },
+    {
+      "id": "T-BUILTIN-024",
+      "source": "builtin",
+      "group": "literature",
+      "source_file": "文献/生物新手教师与经验教师PCK的比较研究——以盘山县高级中学为例.md",
+      "title": "生物新手教师与经验教师PCK的比较研究——以盘山县高级中学为例",
+      "pages": {
+        "count": 41,
+        "first": 1,
+        "last": 42
+      },
+      "sha256": "8761d23a8a456b0359393c83d279feaa6c8b8ef53f60d535799cf11b35ce2299",
+      "full_text_shipped": false
+    },
+    {
+      "id": "T-BUILTIN-025",
+      "source": "builtin",
+      "group": "literature",
+      "source_file": "文献/科学教师PCK研究的国际演进与实践路径_弭乐.md",
+      "title": "科学教师PCK研究的国际演进与实践路径_弭乐",
+      "pages": {
+        "count": 8,
+        "first": 1,
+        "last": 8
+      },
+      "sha256": "39b47c8211dab5a9b0e35ac3f57a71a199331359d20761fd497feb281189d9b6",
+      "full_text_shipped": false
+    },
+    {
+      "id": "T-BUILTIN-026",
+      "source": "builtin",
+      "group": "literature",
+      "source_file": "文献/面向知识结构化的最近发展区建模_骈扬.md",
+      "title": "面向知识结构化的最近发展区建模_骈扬",
+      "pages": {
+        "count": 14,
+        "first": 1,
+        "last": 14
+      },
+      "sha256": "1e8896fb5d561837b6af98fb1f05b9ccb70719a39720640e0efb405581b078f5",
+      "full_text_shipped": false
+    },
+    {
+      "id": "T-BUILTIN-027",
+      "source": "builtin",
+      "group": "literature",
+      "source_file": "文献/高中生物学教学中常用的三种数学模型_黄澹宁.md",
+      "title": "高中生物学教学中常用的三种数学模型_黄澹宁",
+      "pages": {
+        "count": 3,
+        "first": 1,
+        "last": 3
+      },
+      "sha256": "9542d68f5f1262bf2c7d6cfd2b8fc44c54d7d58d4975039a3bfbed61f1950815",
+      "full_text_shipped": false
+    },
+    {
+      "id": "T-BUILTIN-028",
+      "source": "builtin",
+      "group": "literature",
+      "source_file": "文献/高中生物教学中人工智能的应用困境及未来发展路径研究_高园元.md",
+      "title": "高中生物教学中人工智能的应用困境及未来发展路径研究_高园元",
+      "pages": {
+        "count": 3,
+        "first": 1,
+        "last": 3
+      },
+      "sha256": "077669f7d8bae053a1302fb456910923ca67a48a5cab471bedea85300b5a9cb6",
+      "full_text_shipped": false
+    },
+    {
+      "id": "T-BUILTIN-029",
+      "source": "builtin",
+      "group": "literature",
+      "source_file": "文献/高质量PCK的指标_Chan&Park系统综述.md",
+      "title": "Indicators of high-quality PCK & implications for twenty-first-century science education: a systemat",
+      "pages": {
+        "count": 23,
+        "first": 1,
+        "last": 23
+      },
+      "sha256": "5145270cf7f5c9365333077d584a82349e655414c304515b0d6f7f24441a4625",
+      "full_text_shipped": false
+    },
+    {
+      "id": "T-BUILTIN-030",
+      "source": "builtin",
+      "group": "standard",
+      "source_file": "标准/《教育知识与能力》（中学）.md",
+      "title": "《教育知识与能力》（中学）",
+      "pages": {
+        "count": 0,
+        "first": null,
+        "last": null
+      },
+      "sha256": "62ced6c9fd93bdf4423cbccc7c1f148afc5ac1400dd66bedde333fa37dc576c2",
+      "full_text_shipped": false
+    },
+    {
+      "id": "T-BUILTIN-031",
+      "source": "builtin",
+      "group": "standard",
+      "source_file": "标准/中学教师专业标准（试行）.md",
+      "title": "中学教师专业标准（试行）",
+      "pages": {
+        "count": 32,
+        "first": 1,
+        "last": 32
+      },
+      "sha256": "31b65e7c7a507daddf0829c7d98e2892117ba954a2d0fdbb2cf2aca366d32307",
+      "full_text_shipped": false
+    },
+    {
+      "id": "T-BUILTIN-032",
+      "source": "builtin",
+      "group": "standard",
+      "source_file": "标准/中学教育专业师范生教师职业能力标准（试.md",
+      "title": "中学教育专业师范生教师职业能力标准（试",
+      "pages": {
+        "count": 0,
+        "first": null,
+        "last": null
+      },
+      "sha256": "ad0b206a66c2aee5ea7c47b3cd2ea73ba1676f98d44a44bd0d84c6cc542194f0",
+      "full_text_shipped": false
+    },
+    {
+      "id": "T-BUILTIN-033",
+      "source": "builtin",
+      "group": "standard",
+      "source_file": "标准/教师生成式人工智能应用指引(第一版).md",
+      "title": "教师生成式人工智能应用指引(第一版) - 重庆中小学智慧教育平台",
+      "pages": {
+        "count": 7,
+        "first": 1,
+        "last": 7
+      },
+      "sha256": "a02eb0e57615abc259bdf331076f98600e129fbc294f9b6514d1c0200dab4f8c",
+      "full_text_shipped": false
+    },
+    {
+      "id": "T-BUILTIN-034",
+      "source": "builtin",
+      "group": "standard",
+      "source_file": "标准/教师资格考试大纲·中学面试.md",
+      "title": "zhongxue",
+      "pages": {
+        "count": 0,
+        "first": null,
+        "last": null
+      },
+      "sha256": "7ea7813550c8b53c20cfe410bf0485b0e9cd19ebf071091dad0a5b689a1dc3e4",
+      "full_text_shipped": false
+    },
+    {
+      "id": "T-BUILTIN-035",
+      "source": "builtin",
+      "group": "standard",
+      "source_file": "标准/教师资格考试大纲·生物学科知识与教学能力（高级中学）.md",
+      "title": "教师资格考试大纲·生物学科知识与教学能力（高级中学）",
+      "pages": {
+        "count": 0,
+        "first": null,
+        "last": null
+      },
+      "sha256": "ea728ee357c0c43fb261fb54c3fa39490f81c824f9e8fe52b82a8de4510d009e",
+      "full_text_shipped": false
+    },
+    {
+      "id": "T-BUILTIN-036",
+      "source": "builtin",
+      "group": "standard",
+      "source_file": "标准/教师资格考试大纲·综合素质（中学）.md",
+      "title": "教师资格考试大纲·综合素质（中学）",
+      "pages": {
+        "count": 0,
+        "first": null,
+        "last": null
+      },
+      "sha256": "c9630cd6c0e254e3cd28dee05da7317b448b97667d513f50f93aaf92ba8a37f6",
+      "full_text_shipped": false
+    },
+    {
+      "id": "T-BUILTIN-037",
+      "source": "builtin",
+      "group": "standard",
+      "source_file": "标准/教师资格考试标准（试行）.md",
+      "title": "中小学和幼儿园教师资格考试",
+      "pages": {
+        "count": 0,
+        "first": null,
+        "last": null
+      },
+      "sha256": "7e1721cee1568f7348d8136f0ad0e9d38918092ccc3b46c3c1ff5277a1e240ed",
+      "full_text_shipped": false
+    },
+    {
+      "id": "T-BUILTIN-038",
+      "source": "builtin",
+      "group": "standard",
+      "source_file": "标准/教育部等九部门关于加快推进教育数字化的意见.md",
+      "title": "教育部等九部门关于加快推进教育数字化的意见_国务院部门文件_中国政府网",
+      "pages": {
+        "count": 11,
+        "first": 1,
+        "last": 11
+      },
+      "sha256": "f06051229d393d938befd011c86607896808afddf1ea93eb3855d0d42884a792",
+      "full_text_shipped": false
+    }
+  ]
+}

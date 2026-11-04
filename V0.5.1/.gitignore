@@ -1,0 +1,9 @@
+# 运行数据与个人数据，永不入库
+data/
+corpus/
+*.shiban-pkg
+dist/
+__pycache__/
+*.pyc
+.DS_Store
+.shiban/

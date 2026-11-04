@@ -1,0 +1,64 @@
+#!/usr/bin/env bash
+# shiban-store — 师伴命令行入口（v0.5.0，跨平台）
+#
+# 用法： shiban-store <命令> [参数]
+# 数据根： $SHIBAN_ROOT，未设置时用 ~/.shiban。
+#
+# Python 解析顺序：
+#   1. $SHIBAN_PY（显式指定）
+#   2. 包内 .venv/bin/python
+#   3. 系统 python3 / python（并逐个试跑 -c '' 验活）
+#   4. DSH 自带运行时（Windows: ~/.dsh/dsh-runtimes/*/dependencies/python/python.exe）
+#
+# 版本要求：Python >= 3.10（见 package.json 的 shiban.requires）。
+# 不随包分发标准库：sqlite3/hashlib/bz2 等是 C 扩展，只能来自宿主解释器；
+# 随包副本会覆盖宿主的同名模块，反而造成版本错配。
+set -euo pipefail
+
+SELF_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+PKG_DIR="$(cd "$SELF_DIR/../.." && pwd)"
+CLI="$PKG_DIR/vendor/services/shiban_cli.py"
+MIN_MAJOR=3
+MIN_MINOR=10
+
+die() { printf '[error] %s\n' "$*" >&2; exit 2; }
+
+try_py() {
+  [ -n "${1:-}" ] || return 1
+  { [ -x "$1" ] || command -v "$1" >/dev/null 2>&1; } || return 1
+  "$1" -E -c '' >/dev/null 2>&1
+}
+
+PY=""
+if [ -n "${SHIBAN_PY:-}" ]; then
+  try_py "$SHIBAN_PY" || die "SHIBAN_PY=$SHIBAN_PY 无法执行"
+  PY="$SHIBAN_PY"
+else
+  for cand in "$PKG_DIR/.venv/bin/python" python3 python; do
+    if try_py "$cand"; then PY="$cand"; break; fi
+  done
+  if [ -z "$PY" ]; then
+    for cand in "$HOME"/.dsh/dsh-runtimes/*/dependencies/python/python.exe python.exe py; do
+      if try_py "$cand"; then PY="$cand"; break; fi
+    done
+  fi
+fi
+
+if [ -z "$PY" ]; then
+  die "找不到 Python 3。请安装 python3，或设置 SHIBAN_PY 指向解释器。"
+fi
+
+[ -f "$CLI" ] || die "缺少 CLI：$CLI（包可能未完整解压）"
+
+# 版本门槛：明确报错，而不是让用户在导入时报 SyntaxError
+PYVER="$("$PY" -c 'import sys;print("%d.%d"%sys.version_info[:2])' 2>/dev/null || echo "0.0")"
+PYMAJ="${PYVER%%.*}"; PYMIN="${PYVER##*.}"
+if [ "$PYMAJ" -lt "$MIN_MAJOR" ] || { [ "$PYMAJ" -eq "$MIN_MAJOR" ] && [ "$PYMIN" -lt "$MIN_MINOR" ]; }; then
+  die "需要 Python >= ${MIN_MAJOR}.${MIN_MINOR}，当前为 ${PYVER}（$PY）。
+       升级 Python，或设置 SHIBAN_PY 指向 3.10+ 的解释器。"
+fi
+
+export PYTHONUTF8=1
+export PYTHONIOENCODING=utf-8
+
+exec "$PY" "$CLI" "$@"
